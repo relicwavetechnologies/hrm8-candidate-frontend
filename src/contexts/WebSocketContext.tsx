@@ -322,6 +322,18 @@ export function WebSocketProvider({
     [sendMessage]
   );
 
+  // Set messages for a conversation (hydration)
+  const setConversationMessages = useCallback(
+    (conversationId: string, loadedMessages: MessageData[]) => {
+      console.log(` Hydrating ${loadedMessages.length} messages for conversation: ${conversationId}`);
+      setMessages((prev) => ({
+        ...prev,
+        [conversationId]: loadedMessages,
+      }));
+    },
+    []
+  );
+
   // Add message to state (for external updates)
   const addMessage = useCallback(
     (conversationId: string, message: MessageData) => {
@@ -384,6 +396,7 @@ export function WebSocketProvider({
     sendMessage,
     joinConversation,
     leaveConversation,
+    setConversationMessages,
     currentConversationId,
     onlineUsers,
     messages,

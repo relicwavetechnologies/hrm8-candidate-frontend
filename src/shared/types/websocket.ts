@@ -123,6 +123,7 @@ export interface WebSocketContextType {
   sendMessage: (type: WSMessageType, payload: unknown) => void;
   joinConversation: (conversationId: string) => void;
   leaveConversation: () => void;
+  setConversationMessages: (conversationId: string, messages: MessageData[]) => void;
   currentConversationId: string | null;
   onlineUsers: OnlineUser[];
   messages: Record<string, MessageData[]>;

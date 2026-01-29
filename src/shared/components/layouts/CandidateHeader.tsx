@@ -12,6 +12,7 @@ import type { ReactNode } from "react";
 interface CandidateHeaderProps {
   breadcrumbActions?: ReactNode;
   showSidebarTrigger?: boolean;
+  showSearch?: boolean;
 }
 
 // Error boundary component for SidebarTrigger
@@ -70,7 +71,7 @@ function SafeSidebarTrigger() {
   );
 }
 
-export function CandidateHeader({ breadcrumbActions, showSidebarTrigger = true }: CandidateHeaderProps = {}) {
+export function CandidateHeader({ breadcrumbActions, showSidebarTrigger = true, showSearch = true }: CandidateHeaderProps = {}) {
   return (
     <TooltipProvider>
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -83,14 +84,16 @@ export function CandidateHeader({ breadcrumbActions, showSidebarTrigger = true }
           )}
 
           <div className="flex-1 flex items-center gap-4">
-            <div className="relative max-w-md w-full hidden md:block">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search jobs..."
-                className="pl-10 bg-muted/50"
-              />
-            </div>
+            {showSearch && (
+              <div className="relative max-w-md w-full hidden md:block">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search jobs..."
+                  className="pl-10 bg-muted/50"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

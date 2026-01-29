@@ -19,6 +19,8 @@ import type { OfferLetter } from "@/shared/types/offer";
 import { toast } from "sonner";
 import { CheckCircle, XCircle, MessageSquare, FileText, Upload, DollarSign, Calendar, MapPin, Briefcase } from "lucide-react";
 
+import { CandidatePageLayout } from "@/shared/components/layouts/CandidatePageLayout";
+
 export default function OfferDetailPage() {
   const { offerId } = useParams<{ offerId: string }>();
   // const navigate = useNavigate();
@@ -144,17 +146,21 @@ export default function OfferDetailPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="text-center">Loading offer...</div>
-      </div>
+      <CandidatePageLayout>
+        <div className="container mx-auto py-8">
+          <div className="text-center">Loading offer...</div>
+        </div>
+      </CandidatePageLayout>
     );
   }
 
   if (!offer) {
     return (
-      <div className="container mx-auto py-8">
-        <div className="text-center">Offer not found</div>
-      </div>
+      <CandidatePageLayout>
+        <div className="container mx-auto py-8">
+          <div className="text-center">Offer not found</div>
+        </div>
+      </CandidatePageLayout>
     );
   }
 
@@ -163,284 +169,286 @@ export default function OfferDetailPage() {
   const canNegotiate = canAccept;
 
   return (
-    <div className="container mx-auto py-8 max-w-4xl">
-      <div className="mb-6">
-        <h1 className="text-3xl font-bold mb-2">Job Offer</h1>
-        <div className="flex items-center gap-2">
-          {getStatusBadge(offer.status)}
-          <span className="text-muted-foreground">{offer.jobTitle}</span>
+    <CandidatePageLayout>
+      <div className="container mx-auto py-8 max-w-4xl">
+        <div className="mb-6">
+          <h1 className="text-3xl font-bold mb-2">Job Offer</h1>
+          <div className="flex items-center gap-2">
+            {getStatusBadge(offer.status)}
+            <span className="text-muted-foreground">{offer.jobTitle}</span>
+          </div>
         </div>
-      </div>
 
-      <div className="grid gap-6">
-        {/* Offer Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Offer Details</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <DollarSign className="h-4 w-4" />
-                  <span className="text-sm">Salary</span>
-                </div>
-                <p className="text-lg font-semibold">
-                  ${offer.salary.toLocaleString()} {offer.salaryCurrency} / {offer.salaryPeriod}
-                </p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <Calendar className="h-4 w-4" />
-                  <span className="text-sm">Start Date</span>
-                </div>
-                <p className="text-lg font-semibold">{new Date(offer.startDate).toLocaleDateString()}</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <MapPin className="h-4 w-4" />
-                  <span className="text-sm">Location</span>
-                </div>
-                <p className="text-lg font-semibold">{offer.workLocation}</p>
-              </div>
-              <div>
-                <div className="flex items-center gap-2 text-muted-foreground mb-1">
-                  <Briefcase className="h-4 w-4" />
-                  <span className="text-sm">Arrangement</span>
-                </div>
-                <p className="text-lg font-semibold capitalize">{offer.workArrangement.replace(/-/g, ' ')}</p>
-              </div>
-            </div>
-
-            {offer.benefits && offer.benefits.length > 0 && (
-              <>
-                <Separator />
+        <div className="grid gap-6">
+          {/* Offer Details */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Offer Details</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm font-medium mb-2">Benefits</p>
-                  <ul className="list-disc list-inside space-y-1">
-                    {offer.benefits.map((benefit, idx) => (
-                      <li key={idx} className="text-sm">{benefit}</li>
-                    ))}
-                  </ul>
-                </div>
-              </>
-            )}
-
-            {offer.vacationDays && (
-              <>
-                <Separator />
-                <div>
-                  <p className="text-sm font-medium">Vacation Days</p>
-                  <p className="text-sm text-muted-foreground">{offer.vacationDays} days</p>
-                </div>
-              </>
-            )}
-
-            {offer.customMessage && (
-              <>
-                <Separator />
-                <div>
-                  <p className="text-sm font-medium mb-2">Message</p>
-                  <p className="text-sm text-muted-foreground">{offer.customMessage}</p>
-                </div>
-              </>
-            )}
-
-            {offer.expiryDate && (
-              <>
-                <Separator />
-                <div>
-                  <p className="text-sm font-medium">Response Deadline</p>
-                  <p className="text-sm text-muted-foreground">
-                    {new Date(offer.expiryDate).toLocaleDateString()}
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <DollarSign className="h-4 w-4" />
+                    <span className="text-sm">Salary</span>
+                  </div>
+                  <p className="text-lg font-semibold">
+                    ${offer.salary.toLocaleString()} {offer.salaryCurrency} / {offer.salaryPeriod}
                   </p>
                 </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Negotiations */}
-        {negotiations.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5" />
-                Negotiation History
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {negotiations.map((neg) => (
-                <div key={neg.id} className="border-l-4 border-primary pl-4 py-2">
-                  <div className="flex items-center justify-between mb-2">
-                    <span className="font-medium">{neg.senderName}</span>
-                    <span className="text-xs text-muted-foreground">
-                      {new Date(neg.createdAt).toLocaleString()}
-                    </span>
+                <div>
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <Calendar className="h-4 w-4" />
+                    <span className="text-sm">Start Date</span>
                   </div>
-                  <p className="text-sm">{neg.message}</p>
-                  {neg.proposedChanges && (
-                    <div className="mt-2 text-xs text-muted-foreground">
-                      Proposed changes: {JSON.stringify(neg.proposedChanges, null, 2)}
-                    </div>
-                  )}
+                  <p className="text-lg font-semibold">{new Date(offer.startDate).toLocaleDateString()}</p>
                 </div>
-              ))}
-            </CardContent>
-          </Card>
-        )}
+                <div>
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <MapPin className="h-4 w-4" />
+                    <span className="text-sm">Location</span>
+                  </div>
+                  <p className="text-lg font-semibold">{offer.workLocation}</p>
+                </div>
+                <div>
+                  <div className="flex items-center gap-2 text-muted-foreground mb-1">
+                    <Briefcase className="h-4 w-4" />
+                    <span className="text-sm">Arrangement</span>
+                  </div>
+                  <p className="text-lg font-semibold capitalize">{offer.workArrangement.replace(/-/g, ' ')}</p>
+                </div>
+              </div>
 
-        {/* Required Documents */}
-        {documents.length > 0 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <FileText className="h-5 w-5" />
-                Required Documents
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {documents.map((doc) => (
-                <div key={doc.id} className="flex items-center justify-between p-3 border rounded">
+              {offer.benefits && offer.benefits.length > 0 && (
+                <>
+                  <Separator />
                   <div>
-                    <p className="font-medium">{doc.name}</p>
-                    {doc.description && (
-                      <p className="text-sm text-muted-foreground">{doc.description}</p>
-                    )}
-                    <Badge variant="outline" className="mt-2">{doc.status}</Badge>
+                    <p className="text-sm font-medium mb-2">Benefits</p>
+                    <ul className="list-disc list-inside space-y-1">
+                      {offer.benefits.map((benefit, idx) => (
+                        <li key={idx} className="text-sm">{benefit}</li>
+                      ))}
+                    </ul>
                   </div>
-                  {doc.status === 'REQUESTED' && (
-                    <Button size="sm">
-                      <Upload className="h-4 w-4 mr-2" />
-                      Upload
-                    </Button>
-                  )}
-                </div>
-              ))}
+                </>
+              )}
+
+              {offer.vacationDays && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium">Vacation Days</p>
+                    <p className="text-sm text-muted-foreground">{offer.vacationDays} days</p>
+                  </div>
+                </>
+              )}
+
+              {offer.customMessage && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium mb-2">Message</p>
+                    <p className="text-sm text-muted-foreground">{offer.customMessage}</p>
+                  </div>
+                </>
+              )}
+
+              {offer.expiryDate && (
+                <>
+                  <Separator />
+                  <div>
+                    <p className="text-sm font-medium">Response Deadline</p>
+                    <p className="text-sm text-muted-foreground">
+                      {new Date(offer.expiryDate).toLocaleDateString()}
+                    </p>
+                  </div>
+                </>
+              )}
             </CardContent>
           </Card>
-        )}
 
-        {/* Action Buttons */}
-        {canAccept && (
-          <div className="flex gap-4">
-            <Button
-              onClick={handleAccept}
-              className="flex-1"
-              size="lg"
-            >
-              <CheckCircle className="h-5 w-5 mr-2" />
-              Accept Offer
-            </Button>
-            {canNegotiate && (
+          {/* Negotiations */}
+          {negotiations.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <MessageSquare className="h-5 w-5" />
+                  Negotiation History
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {negotiations.map((neg) => (
+                  <div key={neg.id} className="border-l-4 border-primary pl-4 py-2">
+                    <div className="flex items-center justify-between mb-2">
+                      <span className="font-medium">{neg.senderName}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {new Date(neg.createdAt).toLocaleString()}
+                      </span>
+                    </div>
+                    <p className="text-sm">{neg.message}</p>
+                    {neg.proposedChanges && (
+                      <div className="mt-2 text-xs text-muted-foreground">
+                        Proposed changes: {JSON.stringify(neg.proposedChanges, null, 2)}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Required Documents */}
+          {documents.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  Required Documents
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {documents.map((doc) => (
+                  <div key={doc.id} className="flex items-center justify-between p-3 border rounded">
+                    <div>
+                      <p className="font-medium">{doc.name}</p>
+                      {doc.description && (
+                        <p className="text-sm text-muted-foreground">{doc.description}</p>
+                      )}
+                      <Badge variant="outline" className="mt-2">{doc.status}</Badge>
+                    </div>
+                    {doc.status === 'REQUESTED' && (
+                      <Button size="sm">
+                        <Upload className="h-4 w-4 mr-2" />
+                        Upload
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Action Buttons */}
+          {canAccept && (
+            <div className="flex gap-4">
               <Button
-                onClick={() => setShowNegotiationDialog(true)}
-                variant="outline"
+                onClick={handleAccept}
                 className="flex-1"
                 size="lg"
               >
-                <MessageSquare className="h-5 w-5 mr-2" />
-                Negotiate
+                <CheckCircle className="h-5 w-5 mr-2" />
+                Accept Offer
               </Button>
-            )}
-            {canDecline && (
-              <Button
-                onClick={() => setShowDeclineDialog(true)}
-                variant="destructive"
-                className="flex-1"
-                size="lg"
-              >
-                <XCircle className="h-5 w-5 mr-2" />
-                Decline
-              </Button>
-            )}
-          </div>
-        )}
+              {canNegotiate && (
+                <Button
+                  onClick={() => setShowNegotiationDialog(true)}
+                  variant="outline"
+                  className="flex-1"
+                  size="lg"
+                >
+                  <MessageSquare className="h-5 w-5 mr-2" />
+                  Negotiate
+                </Button>
+              )}
+              {canDecline && (
+                <Button
+                  onClick={() => setShowDeclineDialog(true)}
+                  variant="destructive"
+                  className="flex-1"
+                  size="lg"
+                >
+                  <XCircle className="h-5 w-5 mr-2" />
+                  Decline
+                </Button>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Negotiation Dialog */}
+        <Dialog open={showNegotiationDialog} onOpenChange={setShowNegotiationDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Negotiate Offer</DialogTitle>
+              <DialogDescription>
+                Send a message to the employer with your proposed changes
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Message *</Label>
+                <Textarea
+                  value={negotiationMessage}
+                  onChange={(e) => setNegotiationMessage(e.target.value)}
+                  placeholder="Explain what you'd like to negotiate..."
+                  rows={4}
+                />
+              </div>
+              <div>
+                <Label>Proposed Salary (Optional)</Label>
+                <Input
+                  type="number"
+                  value={proposedSalary}
+                  onChange={(e) => setProposedSalary(e.target.value)}
+                  placeholder="Enter proposed salary"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowNegotiationDialog(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleInitiateNegotiation} className="flex-1">
+                  Send Negotiation Request
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Decline Dialog */}
+        <Dialog open={showDeclineDialog} onOpenChange={setShowDeclineDialog}>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Decline Offer</DialogTitle>
+              <DialogDescription>
+                Please provide a reason for declining (optional)
+              </DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div>
+                <Label>Reason (Optional)</Label>
+                <Textarea
+                  value={declineReason}
+                  onChange={(e) => setDeclineReason(e.target.value)}
+                  placeholder="Why are you declining this offer?"
+                  rows={4}
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  onClick={() => setShowDeclineDialog(false)}
+                  className="flex-1"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  variant="destructive"
+                  onClick={handleDecline}
+                  className="flex-1"
+                >
+                  Decline Offer
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      {/* Negotiation Dialog */}
-      <Dialog open={showNegotiationDialog} onOpenChange={setShowNegotiationDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Negotiate Offer</DialogTitle>
-            <DialogDescription>
-              Send a message to the employer with your proposed changes
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Message *</Label>
-              <Textarea
-                value={negotiationMessage}
-                onChange={(e) => setNegotiationMessage(e.target.value)}
-                placeholder="Explain what you'd like to negotiate..."
-                rows={4}
-              />
-            </div>
-            <div>
-              <Label>Proposed Salary (Optional)</Label>
-              <Input
-                type="number"
-                value={proposedSalary}
-                onChange={(e) => setProposedSalary(e.target.value)}
-                placeholder="Enter proposed salary"
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowNegotiationDialog(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button onClick={handleInitiateNegotiation} className="flex-1">
-                Send Negotiation Request
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* Decline Dialog */}
-      <Dialog open={showDeclineDialog} onOpenChange={setShowDeclineDialog}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Decline Offer</DialogTitle>
-            <DialogDescription>
-              Please provide a reason for declining (optional)
-            </DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>Reason (Optional)</Label>
-              <Textarea
-                value={declineReason}
-                onChange={(e) => setDeclineReason(e.target.value)}
-                placeholder="Why are you declining this offer?"
-                rows={4}
-              />
-            </div>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                onClick={() => setShowDeclineDialog(false)}
-                className="flex-1"
-              >
-                Cancel
-              </Button>
-              <Button
-                variant="destructive"
-                onClick={handleDecline}
-                className="flex-1"
-              >
-                Decline Offer
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-    </div>
+    </CandidatePageLayout>
   );
 }
 

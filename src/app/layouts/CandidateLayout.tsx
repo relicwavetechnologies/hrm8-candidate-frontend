@@ -12,13 +12,10 @@ import {
     ClipboardCheck,
     MessageSquare,
     Settings,
-    Menu,
     X,
-    Bell
 } from 'lucide-react'
-import { useState, useEffect } from 'react'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
-import { SidebarProvider, useSidebar } from '@/shared/components/ui/sidebar'
+import { SidebarProvider, useSidebar, SidebarInset } from '@/shared/components/ui/sidebar'
 
 const navItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/candidate/dashboard' },
@@ -100,31 +97,12 @@ function CandidateLayoutContent() {
             </aside>
 
             {/* Main Content Area */}
-            <div className={cn(
+            <SidebarInset className={cn(
                 "flex flex-col flex-1 transition-all duration-300",
                 isSidebarOpen ? "lg:pl-64" : "lg:pl-20"
             )}>
-                {/* Header */}
-                <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b bg-background/95 backdrop-blur px-4 md:px-6">
-                    <Button variant="ghost" size="icon" onClick={() => setIsSidebarOpen(!isSidebarOpen)}>
-                        <Menu className="h-5 w-5" />
-                    </Button>
-
-                    <div className="flex items-center gap-4">
-                        <Button variant="ghost" size="icon" className="relative">
-                            <Bell className="h-5 w-5" />
-                            <span className="absolute top-2 right-2 flex h-2 w-2 rounded-full bg-destructive" />
-                        </Button>
-                        <div className="h-8 w-8 rounded-full bg-gradient-to-br from-primary to-primary/60 border content-center">
-                            <span className="text-[10px] text-primary-foreground font-bold flex justify-center">JD</span>
-                        </div>
-                    </div>
-                </header>
-
-                <main className="flex-1 p-4 md:p-6 lg:p-8">
-                    <Outlet />
-                </main>
-            </div>
+                <Outlet />
+            </SidebarInset>
         </div>
     )
 }

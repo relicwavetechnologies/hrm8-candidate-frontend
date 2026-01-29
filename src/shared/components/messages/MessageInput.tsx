@@ -29,7 +29,7 @@ export function MessageInput({
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { sendMessage, isConnected } = useWebSocket();
+  const { sendMessage, isConnected, connectionState } = useWebSocket();
 
   const isArchivedOrClosed = conversationStatus === 'ARCHIVED' || conversationStatus === 'CLOSED';
   const isInputDisabled = disabled || !isConnected || isArchivedOrClosed;
@@ -109,7 +109,13 @@ export function MessageInput({
               ? `Conversation is ${conversationStatus.toLowerCase()}.`
               : isConnected
                 ? 'Message...'
-                : 'Connecting...'
+                : connectionState === 'connecting'
+                  ? 'Connecting...'
+                  : connectionState === 'reconnecting'
+                    ? 'Reconnecting...'
+                    : connectionState === 'error'
+                      ? 'Connection Error'
+                      : 'Offline'
           }
           disabled={isInputDisabled}
           rows={1}

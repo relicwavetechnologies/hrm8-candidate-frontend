@@ -560,58 +560,61 @@ export default function SavedJobsPage() {
               </Card>
             ) : (
               <div className="grid gap-4">
-                {filteredSavedJobs.map((item) => (
-                  <Card key={item.id}>
-                    <CardContent className="p-6">
-                      <div className="flex flex-col md:flex-row justify-between gap-4">
-                        <div className="space-y-2 flex-1">
-                          <div className="flex items-start justify-between md:justify-start gap-4">
-                            <h3
-                              className="text-base font-semibold hover:text-primary cursor-pointer"
-                              onClick={() => navigate(`/jobs/${item.job.id}`)}
+                {filteredSavedJobs.map((item) => {
+                  if (!item.job) return null;
+                  return (
+                    <Card key={item.id}>
+                      <CardContent className="p-6">
+                        <div className="flex flex-col md:flex-row justify-between gap-4">
+                          <div className="space-y-2 flex-1">
+                            <div className="flex items-start justify-between md:justify-start gap-4">
+                              <h3
+                                className="text-base font-semibold hover:text-primary cursor-pointer"
+                                onClick={() => navigate(`/jobs/${item.job!.id}`)}
+                              >
+                                {item.job.title}
+                              </h3>
+                            </div>
+                            <div className="text-sm text-muted-foreground font-medium">
+                              {item.job.company?.name || 'Unknown Company'}
+                            </div>
+                            <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
+                              <div className="flex items-center gap-1">
+                                <MapPin className="h-3.5 w-3.5" />
+                                {item.job.location} ({item.job.workArrangement})
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Briefcase className="h-3.5 w-3.5" />
+                                {item.job.employmentType}
+                              </div>
+                              <div className="flex items-center gap-1">
+                                <Clock className="h-3.5 w-3.5" />
+                                Posted {item.job.postingDate ? new Date(item.job.postingDate).toLocaleDateString() : 'Recently'}
+                              </div>
+                            </div>
+                            <div className="text-sm font-medium">
+                              {formatSalary(item.job.salaryMin, item.job.salaryMax, item.job.salaryCurrency)}
+                            </div>
+                          </div>
+                          <div className="flex flex-row md:flex-col gap-2 shrink-0">
+                            <Button size="sm" onClick={() => navigate(`/jobs/${item.job!.id}`)}>
+                              Apply Now
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-destructive hover:text-destructive"
+                              onClick={() => handleUnsaveJob(item.job!.id)}
                             >
-                              {item.job.title}
-                            </h3>
-                          </div>
-                          <div className="text-sm text-muted-foreground font-medium">
-                            {item.job.company.name}
-                          </div>
-                          <div className="flex flex-wrap gap-x-4 gap-y-2 text-sm text-muted-foreground">
-                            <div className="flex items-center gap-1">
-                              <MapPin className="h-3.5 w-3.5" />
-                              {item.job.location} ({item.job.workArrangement})
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Briefcase className="h-3.5 w-3.5" />
-                              {item.job.employmentType}
-                            </div>
-                            <div className="flex items-center gap-1">
-                              <Clock className="h-3.5 w-3.5" />
-                              Posted {item.job.postingDate ? new Date(item.job.postingDate).toLocaleDateString() : 'Recently'}
-                            </div>
-                          </div>
-                          <div className="text-sm font-medium">
-                            {formatSalary(item.job.salaryMin, item.job.salaryMax, item.job.salaryCurrency)}
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Remove
+                            </Button>
                           </div>
                         </div>
-                        <div className="flex flex-row md:flex-col gap-2 shrink-0">
-                          <Button size="sm" onClick={() => navigate(`/jobs/${item.job.id}`)}>
-                            Apply Now
-                          </Button>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => handleUnsaveJob(item.job.id)}
-                          >
-                            <Trash2 className="h-4 w-4 mr-2" />
-                            Remove
-                          </Button>
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </TabsContent>
@@ -962,7 +965,7 @@ export default function SavedJobsPage() {
                           </span>
                           <span className="flex items-center gap-1">
                             <Mail className="h-3.5 w-3.5" />
-                            {alert.channels.join(', ')}
+                            {alert.channels?.join(', ') || 'N/A'}
                           </span>
                         </div>
                         {/* Display criteria if any */}

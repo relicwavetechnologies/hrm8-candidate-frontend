@@ -9,6 +9,8 @@ import type { AssessmentSummary } from "@/shared/services/candidateAssessmentSer
 import { format } from "date-fns";
 import { Clock, Play, CheckCircle, AlertCircle, FileText } from "lucide-react";
 
+import { CandidatePageLayout } from "@/shared/components/layouts/CandidatePageLayout";
+
 export default function AssessmentListPage() {
   const [assessments, setAssessments] = useState<AssessmentSummary[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,98 +55,102 @@ export default function AssessmentListPage() {
 
   if (loading) {
     return (
-      <div className="space-y-4 p-6">
-        <div className="flex items-center justify-between">
-          <Skeleton className="h-8 w-48" />
+      <CandidatePageLayout>
+        <div className="space-y-4 p-6">
+          <div className="flex items-center justify-between">
+            <Skeleton className="h-8 w-48" />
+          </div>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            {[1, 2, 3].map((i) => (
+              <Skeleton key={i} className="h-48 w-full" />
+            ))}
+          </div>
         </div>
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <Skeleton key={i} className="h-48 w-full" />
-          ))}
-        </div>
-      </div>
+      </CandidatePageLayout>
     );
   }
 
   return (
-    <div className="space-y-6 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Assessments</h1>
-          <p className="text-muted-foreground">
-            Complete the assigned assessments to proceed with your applications.
-          </p>
-        </div>
-      </div>
-
-      {assessments.length === 0 ? (
-        <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
-          <div className="rounded-full bg-muted p-4 mb-4">
-            <FileText className="h-8 w-8 text-muted-foreground" />
+    <CandidatePageLayout>
+      <div className="space-y-6 p-6">
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight">Assessments</h1>
+            <p className="text-muted-foreground">
+              Complete the assigned assessments to proceed with your applications.
+            </p>
           </div>
-          <CardTitle className="text-xl mb-2">No Assessments Assigned</CardTitle>
-          <CardDescription>
-            You don't have any pending assessments at the moment.
-          </CardDescription>
-        </Card>
-      ) : (
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {assessments.map((assessment) => (
-            <Card key={assessment.id} className="flex flex-col">
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="line-clamp-1" title={assessment.jobTitle}>
-                      {assessment.jobTitle}
-                    </CardTitle>
-                    <CardDescription>{assessment.roundName}</CardDescription>
-                  </div>
-                  {getStatusBadge(assessment.status)}
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1">
-                <div className="space-y-2 text-sm">
-                  <div className="flex items-center text-muted-foreground">
-                    <Clock className="mr-2 h-4 w-4" />
-                    <span>Invited: {format(new Date(assessment.invitedAt), "MMM d, yyyy")}</span>
-                  </div>
-                  {assessment.expiryDate && (
-                    <div className="flex items-center text-red-600">
-                      <AlertCircle className="mr-2 h-4 w-4" />
-                      <span>Due: {format(new Date(assessment.expiryDate), "MMM d, yyyy")}</span>
-                    </div>
-                  )}
-                  {assessment.completedAt && (
-                    <div className="flex items-center text-green-600">
-                      <CheckCircle className="mr-2 h-4 w-4" />
-                      <span>Completed: {format(new Date(assessment.completedAt), "MMM d, yyyy")}</span>
-                    </div>
-                  )}
-                </div>
-              </CardContent>
-              <CardFooter className="pt-4 border-t bg-muted/20">
-                {(assessment.status === "INVITED" || assessment.status === "PENDING" || assessment.status === "IN_PROGRESS") ? (
-                  <Button className="w-full" onClick={() => handleStart(assessment.id)}>
-                    {assessment.status === "IN_PROGRESS" ? (
-                      <>
-                        <Play className="mr-2 h-4 w-4" /> Resume Assessment
-                      </>
-                    ) : (
-                      <>
-                        <Play className="mr-2 h-4 w-4" /> Start Assessment
-                      </>
-                    )}
-                  </Button>
-                ) : (
-                  <Button variant="secondary" className="w-full" disabled>
-                    View Results (Coming Soon)
-                  </Button>
-                )}
-              </CardFooter>
-            </Card>
-          ))}
         </div>
-      )}
-    </div>
+
+        {assessments.length === 0 ? (
+          <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
+            <div className="rounded-full bg-muted p-4 mb-4">
+              <FileText className="h-8 w-8 text-muted-foreground" />
+            </div>
+            <CardTitle className="text-xl mb-2">No Assessments Assigned</CardTitle>
+            <CardDescription>
+              You don't have any pending assessments at the moment.
+            </CardDescription>
+          </Card>
+        ) : (
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            {assessments.map((assessment) => (
+              <Card key={assessment.id} className="flex flex-col">
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1">
+                      <CardTitle className="line-clamp-1" title={assessment.jobTitle}>
+                        {assessment.jobTitle}
+                      </CardTitle>
+                      <CardDescription>{assessment.roundName}</CardDescription>
+                    </div>
+                    {getStatusBadge(assessment.status)}
+                  </div>
+                </CardHeader>
+                <CardContent className="flex-1">
+                  <div className="space-y-2 text-sm">
+                    <div className="flex items-center text-muted-foreground">
+                      <Clock className="mr-2 h-4 w-4" />
+                      <span>Invited: {format(new Date(assessment.invitedAt), "MMM d, yyyy")}</span>
+                    </div>
+                    {assessment.expiryDate && (
+                      <div className="flex items-center text-red-600">
+                        <AlertCircle className="mr-2 h-4 w-4" />
+                        <span>Due: {format(new Date(assessment.expiryDate), "MMM d, yyyy")}</span>
+                      </div>
+                    )}
+                    {assessment.completedAt && (
+                      <div className="flex items-center text-green-600">
+                        <CheckCircle className="mr-2 h-4 w-4" />
+                        <span>Completed: {format(new Date(assessment.completedAt), "MMM d, yyyy")}</span>
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+                <CardFooter className="pt-4 border-t bg-muted/20">
+                  {(assessment.status === "INVITED" || assessment.status === "PENDING" || assessment.status === "IN_PROGRESS") ? (
+                    <Button className="w-full" onClick={() => handleStart(assessment.id)}>
+                      {assessment.status === "IN_PROGRESS" ? (
+                        <>
+                          <Play className="mr-2 h-4 w-4" /> Resume Assessment
+                        </>
+                      ) : (
+                        <>
+                          <Play className="mr-2 h-4 w-4" /> Start Assessment
+                        </>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button variant="secondary" className="w-full" disabled>
+                      View Results (Coming Soon)
+                    </Button>
+                  )}
+                </CardFooter>
+              </Card>
+            ))}
+          </div>
+        )}
+      </div>
+    </CandidatePageLayout>
   );
 }

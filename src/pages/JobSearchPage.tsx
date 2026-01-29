@@ -390,7 +390,7 @@ export default function JobSearchPage() {
   const Layout = isAuthenticated ? CandidatePageLayout : PublicCandidatePageLayout;
 
   return (
-    <Layout showSidebarTrigger={false}>
+    <Layout showSidebarTrigger={false} showSearch={false}>
       <div className="bg-background">
         {/* Page Header */}
         <div className="border-b bg-card">

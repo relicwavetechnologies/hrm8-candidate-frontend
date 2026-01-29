@@ -9,6 +9,7 @@ interface CandidatePageLayoutProps {
   breadcrumbActions?: ReactNode;
   fullWidth?: boolean;
   showSidebarTrigger?: boolean;
+  showSearch?: boolean;
 }
 
 export function CandidatePageLayout({
@@ -19,10 +20,11 @@ export function CandidatePageLayout({
   breadcrumbActions,
   fullWidth = true,
   showSidebarTrigger = true,
+  showSearch = true,
 }: CandidatePageLayoutProps) {
   return (
     <>
-      <CandidateHeader breadcrumbActions={breadcrumbActions} showSidebarTrigger={showSidebarTrigger} />
+      <CandidateHeader breadcrumbActions={breadcrumbActions} showSidebarTrigger={showSidebarTrigger} showSearch={showSearch} />
 
       <div className="flex-1">
         {(title || subtitle || actions) && (
