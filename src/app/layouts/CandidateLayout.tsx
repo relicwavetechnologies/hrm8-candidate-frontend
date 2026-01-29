@@ -18,6 +18,7 @@ import {
 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useIsMobile } from '@/shared/hooks/use-mobile'
+import { SidebarProvider, useSidebar } from '@/shared/components/ui/sidebar'
 
 const navItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/candidate/dashboard' },
@@ -33,17 +34,17 @@ const navItems = [
 ]
 
 export function CandidateLayout() {
+    return (
+        <SidebarProvider defaultOpen={true}>
+            <CandidateLayoutContent />
+        </SidebarProvider>
+    )
+}
+
+function CandidateLayoutContent() {
     const location = useLocation()
     const isMobile = useIsMobile()
-    const [isSidebarOpen, setIsSidebarOpen] = useState(true)
-
-    useEffect(() => {
-        if (isMobile) {
-            setIsSidebarOpen(false)
-        } else {
-            setIsSidebarOpen(true)
-        }
-    }, [isMobile])
+    const { open: isSidebarOpen, setOpen: setIsSidebarOpen } = useSidebar()
 
     return (
         <div className="flex min-h-screen w-full bg-background transition-colors duration-300">

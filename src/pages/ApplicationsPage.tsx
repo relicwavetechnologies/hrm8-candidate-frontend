@@ -7,7 +7,6 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { applicationService } from '@/shared/services/applicationService';
 import type { Application } from '@/shared/services/applicationService';
-import { jobService } from '@/shared/services/jobService';
 import { apiClient } from '@/shared/services/api';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { CandidatePageLayout } from '@/shared/components/layouts/CandidatePageLayout';
@@ -123,37 +122,22 @@ export default function ApplicationsPage() {
             websiteUrl: app.websiteUrl,
           });
 
-          // Fetch job details
-          try {
-            const jobResponse = await jobService.getPublicJobById(app.jobId);
-            if (jobResponse.success && jobResponse.data) {
-              details.jobDetails = {
-                id: jobResponse.data.id,
-                title: jobResponse.data.title,
-                location: jobResponse.data.location,
-                employmentType: jobResponse.data.employmentType,
-                workArrangement: jobResponse.data.workArrangement,
-                salaryMin: jobResponse.data.salaryMin,
-                salaryMax: jobResponse.data.salaryMax,
-                salaryCurrency: jobResponse.data.salaryCurrency,
-                company: jobResponse.data.company ? {
-                  id: jobResponse.data.company.id,
-                  name: jobResponse.data.company.name,
-                } : undefined,
-              };
-            } else {
-              console.warn(`Job ${app.jobId} not found or not accessible`);
-            }
-          } catch (error) {
-            console.error(`Failed to load job details for ${app.jobId}:`, error);
-            // Try to use job data from application if available
-            if (app.job) {
-              details.jobDetails = {
-                id: app.job.id,
-                title: app.job.title,
-                company: app.job.company,
-              };
-            }
+          // Map job details directly from application data (no need for separate API call)
+          if (app.job) {
+            details.jobDetails = {
+              id: app.job.id,
+              title: app.job.title,
+              location: app.job.location,
+              employmentType: app.job.employmentType || app.job.employment_type,
+              workArrangement: app.job.workArrangement || app.job.work_arrangement,
+              salaryMin: app.job.salaryMin || app.job.salary_min,
+              salaryMax: app.job.salaryMax || app.job.salary_max,
+              salaryCurrency: app.job.salaryCurrency || app.job.salary_currency,
+              company: app.job.company ? {
+                id: app.job.company.id,
+                name: app.job.company.name,
+              } : undefined,
+            };
           }
 
           return details;

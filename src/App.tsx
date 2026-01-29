@@ -11,14 +11,32 @@ const queryClient = new QueryClient({
   },
 })
 
-import { CandidateAuthProvider } from './contexts/CandidateAuthContext'
+import { CandidateAuthProvider, useCandidateAuth } from './contexts/CandidateAuthContext'
+import { WebSocketProvider } from './contexts/WebSocketContext'
+
+function WebSocketWrapper({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, candidate } = useCandidateAuth()
+  return (
+    <WebSocketProvider
+      isAuthenticated={isAuthenticated}
+      userEmail={candidate?.email}
+    >
+      {children}
+    </WebSocketProvider>
+  )
+}
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <BrowserRouter>
+      <BrowserRouter future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true
+      }}>
         <CandidateAuthProvider>
-          <AppRoutes />
+          <WebSocketWrapper>
+            <AppRoutes />
+          </WebSocketWrapper>
         </CandidateAuthProvider>
       </BrowserRouter>
     </QueryClientProvider>
