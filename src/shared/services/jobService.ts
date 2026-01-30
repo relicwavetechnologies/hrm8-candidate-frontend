@@ -180,6 +180,26 @@ class JobService {
   async getApplicationForm(jobId: string) {
     return apiClient.get<ApplicationFormResponse>(`/api/public/jobs/${jobId}/application-form`);
   }
+
+  /**
+   * Get all jobs for a specific company
+   * @param companyId - The company ID to get jobs for
+   * @param params - Optional search/filter parameters
+   */
+  async getCompanyJobs(companyId: string, params?: PublicJobSearchParams) {
+    const queryParams = new URLSearchParams();
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.department) queryParams.append('department', params.department);
+    if (params?.location) queryParams.append('location', params.location);
+    if (params?.employmentType) queryParams.append('employmentType', params.employmentType);
+    if (params?.workArrangement) queryParams.append('workArrangement', params.workArrangement);
+
+    return apiClient.get<PublicJobSearchResponse>(
+      `/api/public/companies/${companyId}/jobs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    );
+  }
 }
 
 export const jobService = new JobService();

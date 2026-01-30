@@ -8,6 +8,7 @@ import { apiClient } from '@/shared/services/api';
 
 export interface AssessmentSummary {
   id: string;
+  invitationToken: string; // Used for accessing assessment via token-based routes
   status: 'PENDING' | 'INVITED' | 'IN_PROGRESS' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED';
   jobTitle: string;
   roundName: string;
@@ -49,24 +50,24 @@ class CandidateAssessmentService {
   }
 
   /**
-   * Get assessment details
+   * Get assessment details by token (not ID - backend uses token-based access)
    */
-  async getAssessment(id: string) {
-    return apiClient.get<{ assessment: AssessmentDetails }>(`/api/candidate/assessments/${id}`);
+  async getAssessment(token: string) {
+    return apiClient.get<{ assessment: AssessmentDetails }>(`/api/candidate/assessments/${token}`);
   }
 
   /**
-   * Start assessment
+   * Start assessment by token (not ID - backend uses token-based access)
    */
-  async startAssessment(id: string) {
-    return apiClient.post<{ message: string; startedAt: string }>(`/api/candidate/assessments/${id}/start`);
+  async startAssessment(token: string) {
+    return apiClient.post<{ message: string; startedAt: string }>(`/api/candidate/assessments/${token}/start`);
   }
 
   /**
-   * Submit assessment
+   * Submit assessment by token (not ID - backend uses token-based access)
    */
-  async submitAssessment(id: string, answers: AssessmentAnswer[]) {
-    return apiClient.post<{ message: string }>(`/api/candidate/assessments/${id}/submit`, { answers });
+  async submitAssessment(token: string, answers: AssessmentAnswer[]) {
+    return apiClient.post<{ message: string }>(`/api/candidate/assessments/${token}/submit`, { answers });
   }
 }
 

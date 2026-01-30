@@ -158,7 +158,8 @@ export default function JobSearchPage() {
           response.data.applications.map((app: { jobId?: string }) => app.jobId).filter((id): id is string => !!id) // Ensure ids are filtered for strings only
         );
         console.log('JobSearchPage - Applied job IDs:', Array.from(appliedIds));
-
+        // Store applied job IDs in ref for filtering
+        appliedJobIdsRef.current = appliedIds;
       }
     } catch (error: any) {
       // Silently fail for unauthenticated users (401/403 errors are expected)

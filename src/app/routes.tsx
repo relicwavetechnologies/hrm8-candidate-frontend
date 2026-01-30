@@ -4,6 +4,7 @@ import { CandidateLayout } from './layouts/CandidateLayout'
 import LoginPage from '@/pages/auth/LoginPage'
 import RegisterPage from '@/pages/auth/RegisterPage'
 import VerifyEmailPage from '@/pages/auth/VerifyEmailPage'
+import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
 import CandidateDashboardHome from '@/pages/CandidateDashboardHome'
 import JobSearchPage from '@/pages/JobSearchPage'
 import ApplicationsPage from '@/pages/ApplicationsPage'
@@ -19,6 +20,8 @@ import ConversationPage from '@/pages/ConversationPage'
 import NotificationsPage from '@/pages/NotificationsPage'
 import ApplicationTrackingPage from '@/pages/ApplicationTrackingPage'
 import JobDetailPage from '@/pages/JobDetailPage'
+import CompanyDetailPage from '@/pages/CompanyDetailPage'
+import CareersPage from '@/pages/CareersPage'
 import OfferDetailPage from '@/pages/OfferDetailPage'
 import AssessmentPage from '@/pages/AssessmentPage'
 import JobApplicationPage from '@/pages/JobApplicationPage'
@@ -32,12 +35,15 @@ export function AppRoutes() {
                 <Route path="/login" element={<LoginPage />} />
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/verify-email" element={<VerifyEmailPage />} />
+                <Route path="/forgot-password" element={<ForgotPasswordPage />} />
             </Route>
 
             {/* Public Job Routes */}
             <Route path="/jobs" element={<JobSearchPage />} />
             <Route path="/jobs/:id" element={<JobDetailPage />} />
             <Route path="/jobs/:id/apply" element={<JobApplicationPage />} />
+            <Route path="/companies" element={<CareersPage />} />
+            <Route path="/companies/:id" element={<CompanyDetailPage />} />
 
             {/* Candidate Protected Routes */}
             <Route element={<CandidateAuthGuard><CandidateLayout /></CandidateAuthGuard>}>

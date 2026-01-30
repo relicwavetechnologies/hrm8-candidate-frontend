@@ -106,7 +106,7 @@ class OfferService {
    * Accept offer (candidate)
    */
   async acceptOffer(offerId: string, signedDocumentUrl?: string) {
-    return apiClient.post<OfferLetter>(`/api/candidate/offers/${offerId}/accept`, {
+    return apiClient.post<OfferLetter>(`/api/offers/${offerId}/accept`, {
       signedDocumentUrl,
     });
   }
@@ -115,7 +115,7 @@ class OfferService {
    * Decline offer (candidate)
    */
   async declineOffer(offerId: string, reason?: string) {
-    return apiClient.post<OfferLetter>(`/api/candidate/offers/${offerId}/decline`, {
+    return apiClient.post<OfferLetter>(`/api/offers/${offerId}/decline`, {
       reason,
     });
   }
@@ -136,7 +136,7 @@ class OfferService {
     message: string;
     proposedChanges?: any;
   }) {
-    return apiClient.post<NegotiationMessage>(`/api/candidate/offers/${offerId}/negotiations`, data);
+    return apiClient.post<NegotiationMessage>(`/api/offers/${offerId}/negotiations`, data);
   }
 
   /**
@@ -161,7 +161,7 @@ class OfferService {
    * Accept negotiated terms (candidate)
    */
   async acceptNegotiatedTerms(offerId: string, negotiationId: string) {
-    return apiClient.post(`/api/candidate/offers/${offerId}/negotiations/${negotiationId}/accept`, {});
+    return apiClient.post(`/api/offers/${offerId}/negotiations/${negotiationId}/accept`, {});
   }
 
   /**
@@ -192,7 +192,7 @@ class OfferService {
     fileUrl: string;
     fileName: string;
   }) {
-    return apiClient.post<OfferDocument>(`/api/candidate/offers/${offerId}/documents/${documentId}/upload`, data);
+    return apiClient.post<OfferDocument>(`/api/offers/${offerId}/documents/${documentId}/upload`, data);
   }
 
   /**
