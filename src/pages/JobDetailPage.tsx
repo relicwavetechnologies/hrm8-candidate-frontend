@@ -178,7 +178,7 @@ export default function JobDetailPage() {
       <div className="p-6 space-y-6">
         <AtsPageHeader
           title={job.title}
-          subtitle={`${job.company.name} • ${job.location}`}
+          subtitle={`${job.company?.name ?? 'Unknown Company'} • ${job.location}`}
         >
           <div className="flex items-center gap-2">
             {isAuthenticated && (
@@ -214,7 +214,7 @@ export default function JobDetailPage() {
                     <CardDescription className="flex items-center gap-4 flex-wrap mt-2">
                       <span className="flex items-center gap-1">
                         <Building2 className="h-4 w-4" />
-                        {job.company.name}
+                        {job.company?.name ?? 'Unknown Company'}
                       </span>
                       <span className="flex items-center gap-1">
                         <MapPin className="h-4 w-4" />
@@ -222,7 +222,7 @@ export default function JobDetailPage() {
                       </span>
                       <span className="flex items-center gap-1">
                         <Briefcase className="h-4 w-4" />
-                        {job.employmentType.replace('_', ' ')}
+                        {job.employmentType?.replace('_', ' ') ?? 'N/A'}
                       </span>
                       <span className="flex items-center gap-1">
                         <Clock className="h-4 w-4" />
@@ -254,7 +254,7 @@ export default function JobDetailPage() {
             </Card>
 
             {/* Requirements */}
-            {job.requirements.length > 0 && (
+            {job.requirements && Array.isArray(job.requirements) && job.requirements.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base font-semibold">Requirements</CardTitle>
@@ -270,7 +270,7 @@ export default function JobDetailPage() {
             )}
 
             {/* Responsibilities */}
-            {job.responsibilities.length > 0 && (
+            {job.responsibilities && Array.isArray(job.responsibilities) && job.responsibilities.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base font-semibold">Responsibilities</CardTitle>
@@ -286,7 +286,7 @@ export default function JobDetailPage() {
             )}
 
             {/* Tags */}
-            {job.promotionalTags.length > 0 && (
+            {job.promotionalTags && Array.isArray(job.promotionalTags) && job.promotionalTags.length > 0 && (
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base font-semibold">Tags</CardTitle>
@@ -319,11 +319,11 @@ export default function JobDetailPage() {
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <Briefcase className="h-4 w-4 text-muted-foreground" />
-                    <span>{job.employmentType.replace('_', ' ')}</span>
+                    <span>{job.employmentType?.replace('_', ' ') ?? 'N/A'}</span>
                   </div>
                   <div className="flex items-center gap-2 text-sm">
                     <MapPin className="h-4 w-4 text-muted-foreground" />
-                    <span>{job.workArrangement.replace('_', ' ')}</span>
+                    <span>{job.workArrangement?.replace('_', ' ') ?? 'N/A'}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
@@ -357,17 +357,17 @@ export default function JobDetailPage() {
             {/* Company Info */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-base font-semibold">About {job.company.name}</CardTitle>
+                <CardTitle className="text-base font-semibold">About {job.company?.name ?? 'Unknown Company'}</CardTitle>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4">
                   Learn more about this company
                 </p>
-                {job.company.website && (
+                {job.company?.website && (
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => window.open(job.company.website, '_blank')}
+                    onClick={() => window.open(job.company?.website, '_blank')}
                   >
                     Visit Website
                   </Button>
@@ -379,7 +379,7 @@ export default function JobDetailPage() {
             {relatedJobs.length > 0 && (
               <Card>
                 <CardHeader>
-                  <CardTitle className="text-base font-semibold">Other Jobs at {job.company.name}</CardTitle>
+                  <CardTitle className="text-base font-semibold">Other Jobs at {job.company?.name ?? 'Unknown Company'}</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   {relatedJobs.map((relatedJob) => (
