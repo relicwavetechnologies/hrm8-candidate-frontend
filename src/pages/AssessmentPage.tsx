@@ -239,8 +239,29 @@ export default function AssessmentPage() {
 
   const questions = assessment.questions || [];
   const currentQuestion = questions[currentQuestionIndex];
+
+  if (started && questions.length === 0) {
+    return (
+      <div className="container max-w-2xl py-12">
+        <Card>
+          <CardHeader>
+            <CardTitle>Error: No Questions Found</CardTitle>
+            <CardDescription>
+              This assessment doesn't seem to have any questions. Please contact the recruitment team.
+            </CardDescription>
+          </CardHeader>
+          <CardFooter>
+            <Button variant="outline" className="w-full" onClick={() => navigate("/candidate/assessments")}>
+              Back to Assessments
+            </Button>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
+
   const isLastQuestion = currentQuestionIndex === questions.length - 1;
-  const progress = ((currentQuestionIndex + 1) / questions.length) * 100;
+  const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
 
   return (
     <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
@@ -276,19 +297,21 @@ export default function AssessmentPage() {
                 <div className="flex justify-between items-start gap-4">
                   <CardTitle className="text-lg leading-relaxed">
                     <span className="mr-2 text-muted-foreground">{currentQuestionIndex + 1}.</span>
-                    {currentQuestion.questionText}
+                    {currentQuestion?.questionText || "Question text not available"}
                   </CardTitle>
                   <span className="text-xs font-medium bg-muted px-2 py-1 rounded whitespace-nowrap">
-                    {currentQuestion.points} pts
+                    {currentQuestion?.points || 0} pts
                   </span>
                 </div>
               </CardHeader>
               <CardContent>
-                <QuestionRenderer
-                  question={currentQuestion}
-                  value={answers[currentQuestion.id]}
-                  onChange={handleAnswerChange}
-                />
+                {currentQuestion && (
+                  <QuestionRenderer
+                    question={currentQuestion}
+                    value={answers[currentQuestion.id]}
+                    onChange={handleAnswerChange}
+                  />
+                )}
               </CardContent>
               <CardFooter className="flex justify-between border-t pt-6">
                 <Button
