@@ -5,7 +5,7 @@
 
 import { useState, useEffect } from 'react';
 import * as React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { applicationService } from '@/shared/services/applicationService';
 import type { Application } from '@/shared/services/applicationService';
 import { apiClient } from '@/shared/services/api';
@@ -96,9 +96,33 @@ export default function ApplicationsPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const [searchParams] = useSearchParams();
+  const expandId = searchParams.get('expand');
+
   useEffect(() => {
     loadApplications();
   }, []);
+
+  // Handle auto-expansion from query param
+  useEffect(() => {
+    if (expandId && applications.length > 0) {
+      const app = applications.find(a => a.id === expandId);
+      if (app) {
+        // Expand it if not already expanded
+        if (!expandedApplications.has(expandId)) {
+          toggleApplication(expandId);
+        }
+
+        // Scroll to it after a short delay to allow for expansion/rendering
+        setTimeout(() => {
+          const element = document.getElementById(`app-${expandId}`);
+          if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+          }
+        }, 500);
+      }
+    }
+  }, [expandId, applications.length]);
 
   const loadApplications = async () => {
     setIsLoading(true);
@@ -484,7 +508,7 @@ export default function ApplicationsPage() {
                   const hasInterviews = app.interviews && app.interviews.length > 0;
 
                   return (
-                    <Card key={app.id} className="overflow-hidden">
+                    <Card key={app.id} id={`app-${app.id}`} className="overflow-hidden">
                       <div className="p-4">
                         <div className="flex items-start justify-between gap-4">
                           <div className="flex-1 space-y-2">

@@ -424,15 +424,15 @@ export default function CandidateDashboardHome() {
               </div>
             ) : (
               <div className="space-y-4">
-                {recentApplications.map((app) => (
+                {recentApplications.map((app: any) => (
                   <div
                     key={app.id}
-                    className="flex items-center justify-between p-4 border rounded-lg cursor-pointer"
-                    onClick={() => navigate(`/candidate/applications/${app.id}`)}
+                    className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/30 transition-colors"
+                    onClick={() => navigate(`/candidate/applications?expand=${app.id}`)}
                   >
                     <div className="flex-1">
                       <div className="flex items-center gap-2 mb-1">
-                        <h4 className="text-sm font-semibold">Application #{app.id.slice(0, 8)}</h4>
+                        <h4 className="text-sm font-semibold">{app.job?.title || `Application #${app.id.slice(0, 8)}`}</h4>
                         {getStatusBadge(app.status)}
                         {app.isNew && (
                           <Badge variant="outline" className="h-6 px-2 text-xs rounded-full bg-primary/10 text-primary border-primary/20">
@@ -440,8 +440,8 @@ export default function CandidateDashboardHome() {
                           </Badge>
                         )}
                       </div>
-                      <p className="text-sm text-muted-foreground">
-                        Applied {new Date(app.appliedDate).toLocaleDateString()}
+                      <p className="text-sm text-muted-foreground font-medium">
+                        {app.job?.company?.name || 'Company'} • Applied {new Date(app.appliedDate || app.applied_date).toLocaleDateString()}
                       </p>
                     </div>
                   </div>

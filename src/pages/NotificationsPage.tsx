@@ -306,7 +306,7 @@ export default function NotificationsPage() {
             case 'INTERVIEW_SCHEDULED':
             case 'INTERVIEW_RESCHEDULED':
             case 'INTERVIEW_REMINDER':
-                return <Calendar className="h-5 w-5 text-green-500" />;
+                return <Calendar className="h-5 w-5 text-blue-500" />;
             case 'INTERVIEW_CANCELLED':
                 return <Calendar className="h-5 w-5 text-red-500" />;
             case 'OFFER_SENT':
@@ -767,7 +767,7 @@ interface NotificationCardProps {
 function NotificationCard({ notification, onDelete, onClick, getIcon }: NotificationCardProps) {
     return (
         <Card
-            className={`cursor-pointer ${!notification.read ? 'bg-accent/30' : ''}`}
+            className={`cursor-pointer transition-colors hover:bg-muted ${!notification.read ? 'bg-primary/5 border-primary/20' : ''}`}
             onClick={() => onClick(notification)}
         >
             <CardHeader className="pb-3">

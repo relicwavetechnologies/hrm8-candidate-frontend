@@ -75,8 +75,8 @@ function CandidateLayoutContent() {
                                 key={item.path}
                                 to={item.path}
                                 className={cn(
-                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-accent hover:text-accent-foreground",
-                                    isActive ? "bg-accent text-accent-foreground shadow-sm" : "text-muted-foreground",
+                                    "flex items-center gap-3 rounded-lg px-3 py-2 text-sm font-medium transition-all hover:bg-muted",
+                                    isActive ? "bg-primary/10 text-primary shadow-sm" : "text-muted-foreground",
                                     !isSidebarOpen && "lg:justify-center lg:px-2"
                                 )}
                                 onClick={() => isMobile && setIsSidebarOpen(false)}

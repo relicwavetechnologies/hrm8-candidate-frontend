@@ -163,15 +163,7 @@ export function NotificationDropdown({
                                 onClick={() => handleNotificationClick(notification)}
                                 className={cn(
                                     'w-full text-left px-4 py-3 hover:bg-muted/50 transition-colors border-l-2',
-                                    !notification.read ? (
-                                        ['SUBSCRIPTION_RENEWAL_FAILED', 'WITHDRAWAL_REJECTED', 'LOW_BALANCE_WARNING', 'LEAD_CONVERSION_DECLINED'].includes(notification.type)
-                                            ? 'bg-red-50/50 dark:bg-red-950/20 border-red-500'
-                                            : ['COMMISSION_EARNED', 'WITHDRAWAL_APPROVED', 'LEAD_CONVERTED'].includes(notification.type)
-                                                ? 'bg-green-50/50 dark:bg-green-950/20 border-green-500'
-                                                : ['NEW_LEAD', 'LEAD_CONVERSION_REQUESTED'].includes(notification.type)
-                                                    ? 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-500'
-                                                    : 'bg-blue-50/50 dark:bg-blue-950/20 border-blue-500'
-                                    ) : 'border-transparent'
+                                    !notification.read ? 'border-primary bg-primary/5' : 'border-transparent'
                                 )}
                             >
                                 <div className="flex gap-3">
@@ -221,6 +213,6 @@ export function NotificationDropdown({
                     View all notifications
                 </Button>
             </div>
-        </div>
+        </div >
     );
 }
