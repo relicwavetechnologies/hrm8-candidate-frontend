@@ -1,9 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Bell, Check, Trash2, Loader2, Calendar, Briefcase, Mail, Clock } from 'lucide-react';
+import { Bell, Check, Trash2, Loader2, Calendar, Briefcase, Mail, Clock, FileText, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Separator } from '@/shared/components/ui/separator';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/shared/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Switch } from '@/shared/components/ui/switch';
 import { Label } from '@/shared/components/ui/label';
@@ -37,6 +45,8 @@ interface Notification {
     };
     read: boolean;
     createdAt: string;
+    actionUrl?: string; // Standard property from backend
+    link?: string; // Legacy property
 }
 
 interface UpcomingInterview {
@@ -68,9 +78,14 @@ export default function NotificationsPage() {
     const [upcomingInterviews, setUpcomingInterviews] = useState<UpcomingInterview[]>([]);
     const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
     const [loading, setLoading] = useState(true);
+    const [loadingMore, setLoadingMore] = useState(false);
     const [savingPreferences, setSavingPreferences] = useState(false);
     const [unreadCount, setUnreadCount] = useState(0);
     const [activeTab, setActiveTab] = useState('all');
+    const [page, setPage] = useState(0);
+    const [hasMore, setHasMore] = useState(true);
+    const [totalNotifications, setTotalNotifications] = useState(0);
+    const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
     const navigate = useNavigate();
     const { toast } = useToast();
 
@@ -79,27 +94,57 @@ export default function NotificationsPage() {
     }, []);
 
     const fetchAllData = async () => {
+        setLoading(true);
         await Promise.all([
-            fetchNotifications(),
+            fetchNotifications(0, true),
             fetchUpcomingInterviews(),
             fetchPreferences(),
         ]);
+        setLoading(false);
     };
 
-    const fetchNotifications = async () => {
+    const fetchNotifications = async (offset = 0, initial = false) => {
         try {
-            setLoading(true);
-            const response = await apiClient.get('/api/candidate/notifications');
+            if (!initial) setLoadingMore(true);
+            const limit = 20;
+            const response = await apiClient.get(`/api/candidate/notifications?limit=${limit}&offset=${offset}`);
+
             if (response.success && response.data) {
-                const data = response.data as { notifications: Notification[]; unreadCount: number };
-                setNotifications(data.notifications || []);
+                const data = response.data as { notifications: Notification[]; unreadCount: number; total: number };
+                const newNotifications = data.notifications || [];
+
+                if (initial) {
+                    setNotifications(newNotifications);
+                } else {
+                    setNotifications(prev => [...prev, ...newNotifications]);
+                }
+
                 setUnreadCount(data.unreadCount || 0);
+                setTotalNotifications(data.total || 0);
+                setHasMore(newNotifications.length === limit);
+                setPage(offset / limit);
+            } else {
+                toast({
+                    title: 'Error',
+                    description: response.error || 'Failed to fetch notifications',
+                    variant: 'destructive',
+                });
             }
-        } catch (error) {
+        } catch (error: any) {
             console.error('Failed to fetch notifications:', error);
+            toast({
+                title: 'Error',
+                description: 'A connection error occurred',
+                variant: 'destructive',
+            });
         } finally {
-            setLoading(false);
+            if (!initial) setLoadingMore(false);
         }
+    };
+
+    const handleLoadMore = () => {
+        const nextOffset = (page + 1) * 20;
+        fetchNotifications(nextOffset);
     };
 
     const fetchUpcomingInterviews = async () => {
@@ -126,30 +171,51 @@ export default function NotificationsPage() {
 
     const markAsRead = async (id: string) => {
         try {
-            await apiClient.put(`/api/candidate/notifications/${id}/read`);
-            setNotifications(prev =>
-                prev.map(n => (n.id === id ? { ...n, read: true } : n))
-            );
-            setUnreadCount(prev => Math.max(0, prev - 1));
+            const response = await apiClient.put(`/api/candidate/notifications/${id}/read`);
+            if (response.success) {
+                setNotifications(prev =>
+                    prev.map(n => (n.id === id ? { ...n, read: true } : n))
+                );
+                setUnreadCount(prev => Math.max(0, prev - 1));
+            } else {
+                toast({
+                    title: 'Error',
+                    description: response.error || 'Failed to mark as read',
+                    variant: 'destructive',
+                });
+            }
         } catch (error) {
             console.error('Failed to mark notification as read:', error);
+            toast({
+                title: 'Error',
+                description: 'Failed to update notification status',
+                variant: 'destructive',
+            });
         }
     };
 
     const markAllAsRead = async () => {
         try {
-            await apiClient.put('/api/candidate/notifications/mark-all-read');
-            setNotifications(prev => prev.map(n => ({ ...n, read: true })));
-            setUnreadCount(0);
-            toast({
-                title: 'Success',
-                description: 'All notifications marked as read',
-            });
+            const response = await apiClient.put('/api/candidate/notifications/mark-all-read');
+            if (response.success) {
+                setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+                setUnreadCount(0);
+                toast({
+                    title: 'Success',
+                    description: 'All notifications marked as read',
+                });
+            } else {
+                toast({
+                    title: 'Error',
+                    description: response.error || 'Failed to mark all as read',
+                    variant: 'destructive',
+                });
+            }
         } catch (error) {
             console.error('Failed to mark all as read:', error);
             toast({
                 title: 'Error',
-                description: 'Failed to mark all notifications as read',
+                description: 'Failed to update notifications',
                 variant: 'destructive',
             });
         }
@@ -157,14 +223,31 @@ export default function NotificationsPage() {
 
     const deleteNotification = async (id: string) => {
         try {
-            await apiClient.delete(`/api/candidate/notifications/${id}`);
-            setNotifications(prev => prev.filter(n => n.id !== id));
-            const notification = notifications.find(n => n.id === id);
-            if (notification && !notification.read) {
-                setUnreadCount(prev => Math.max(0, prev - 1));
+            const response = await apiClient.delete(`/api/candidate/notifications/${id}`);
+            if (response.success) {
+                setNotifications(prev => prev.filter(n => n.id !== id));
+                const notification = notifications.find(n => n.id === id);
+                if (notification && !notification.read) {
+                    setUnreadCount(prev => Math.max(0, prev - 1));
+                }
+                toast({
+                    title: 'Deleted',
+                    description: 'Notification removed',
+                });
+            } else {
+                toast({
+                    title: 'Error',
+                    description: response.error || 'Failed to delete notification',
+                    variant: 'destructive',
+                });
             }
         } catch (error) {
             console.error('Failed to delete notification:', error);
+            toast({
+                title: 'Error',
+                description: 'Failed to delete notification',
+                variant: 'destructive',
+            });
         }
     };
 
@@ -183,12 +266,18 @@ export default function NotificationsPage() {
                     title: 'Success',
                     description: 'Notification preferences updated',
                 });
+            } else {
+                toast({
+                    title: 'Error',
+                    description: response.error || 'Failed to update preferences',
+                    variant: 'destructive',
+                });
             }
         } catch (error) {
             console.error('Failed to update preferences:', error);
             toast({
                 title: 'Error',
-                description: 'Failed to update preferences',
+                description: 'Failed to save settings',
                 variant: 'destructive',
             });
         } finally {
@@ -201,22 +290,34 @@ export default function NotificationsPage() {
             markAsRead(notification.id);
         }
 
-        // Navigate to the detail page for "expanded" view
-        navigate(`/candidate/notifications/${notification.id}`);
+        // Open Dialog instead of direct navigation
+        setSelectedNotification(notification);
     };
 
     const getNotificationIcon = (type: string) => {
         switch (type) {
             case 'JOB_ALERT':
+            case 'JOB_MATCH':
                 return <Briefcase className="h-5 w-5 text-blue-500" />;
+            case 'APPLICATION_RECEIVED':
             case 'APPLICATION_UPDATE':
+            case 'APPLICATION_STATUS_UPDATED':
                 return <Bell className="h-5 w-5 text-purple-500" />;
             case 'INTERVIEW_SCHEDULED':
+            case 'INTERVIEW_RESCHEDULED':
+            case 'INTERVIEW_REMINDER':
                 return <Calendar className="h-5 w-5 text-green-500" />;
+            case 'INTERVIEW_CANCELLED':
+                return <Calendar className="h-5 w-5 text-red-500" />;
+            case 'OFFER_SENT':
+            case 'OFFER_ACCEPTED':
+            case 'OFFER_DECLINED':
+                return <FileText className="h-5 w-5 text-blue-600" />;
             case 'MESSAGE':
+            case 'MESSAGE_RECEIVED':
                 return <Mail className="h-5 w-5 text-orange-500" />;
             case 'SYSTEM':
-                return <Bell className="h-5 w-5 text-gray-500" />;
+                return <Info className="h-5 w-5 text-gray-500" />;
             default:
                 return <Bell className="h-5 w-5" />;
         }
@@ -225,11 +326,15 @@ export default function NotificationsPage() {
     const filteredNotifications = () => {
         switch (activeTab) {
             case 'applications':
-                return notifications.filter(n => n.type === 'APPLICATION_UPDATE');
+                return notifications.filter(n =>
+                    ['APPLICATION_RECEIVED', 'APPLICATION_UPDATE', 'APPLICATION_STATUS_UPDATED', 'OFFER_SENT', 'OFFER_ACCEPTED', 'OFFER_DECLINED'].includes(n.type)
+                );
             case 'interviews':
-                return notifications.filter(n => n.type === 'INTERVIEW_SCHEDULED');
+                return notifications.filter(n =>
+                    ['INTERVIEW_SCHEDULED', 'INTERVIEW_RESCHEDULED', 'INTERVIEW_CANCELLED', 'INTERVIEW_REMINDER'].includes(n.type)
+                );
             case 'job-alerts':
-                return notifications.filter(n => n.type === 'JOB_ALERT');
+                return notifications.filter(n => ['JOB_ALERT', 'JOB_MATCH'].includes(n.type));
             default:
                 return notifications;
         }
@@ -240,7 +345,9 @@ export default function NotificationsPage() {
             <div className="p-6 space-y-6">
                 <AtsPageHeader
                     title="Notifications & Alerts"
-                    subtitle="Manage your notifications and stay updated"
+                    subtitle={unreadCount > 0
+                        ? `You have ${unreadCount} unread notification${unreadCount === 1 ? '' : 's'} out of ${totalNotifications} total.`
+                        : `Manage your notifications. You have ${totalNotifications} total notifications.`}
                 >
                     {unreadCount > 0 && (
                         <Button onClick={markAllAsRead} variant="outline" size="sm">
@@ -278,15 +385,31 @@ export default function NotificationsPage() {
                             </Card>
                         ) : (
                             <div className="space-y-4">
-                                {filteredNotifications().map((notification) => (
-                                    <NotificationCard
-                                        key={notification.id}
-                                        notification={notification}
-                                        onDelete={deleteNotification}
-                                        onClick={handleNotificationClick}
-                                        getIcon={getNotificationIcon}
-                                    />
-                                ))}
+                                <div className="space-y-4">
+                                    {filteredNotifications().map((notification) => (
+                                        <NotificationCard
+                                            key={notification.id}
+                                            notification={notification}
+                                            onDelete={deleteNotification}
+                                            onClick={handleNotificationClick}
+                                            getIcon={getNotificationIcon}
+                                        />
+                                    ))}
+                                </div>
+                                {hasMore && activeTab === 'all' && (
+                                    <div className="flex justify-center py-4">
+                                        <Button
+                                            variant="ghost"
+                                            onClick={handleLoadMore}
+                                            disabled={loadingMore}
+                                        >
+                                            {loadingMore ? (
+                                                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                            ) : null}
+                                            Load More
+                                        </Button>
+                                    </div>
+                                )}
                             </div>
                         )}
                     </TabsContent>
@@ -590,6 +713,46 @@ export default function NotificationsPage() {
                     </TabsContent>
                 </Tabs>
             </div>
+
+            <Dialog open={!!selectedNotification} onOpenChange={(open) => !open && setSelectedNotification(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            {selectedNotification?.title}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {selectedNotification?.createdAt && !isNaN(new Date(selectedNotification.createdAt).getTime())
+                                ? formatDistanceToNow(new Date(selectedNotification.createdAt), { addSuffix: true })
+                                : 'Just now'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                            {selectedNotification?.message}
+                        </p>
+                    </div>
+                    <DialogFooter className="sm:justify-between gap-2">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setSelectedNotification(null)}
+                        >
+                            Close
+                        </Button>
+                        {(selectedNotification?.link || selectedNotification?.actionUrl) && (
+                            <Button
+                                type="button"
+                                onClick={() => {
+                                    navigate(selectedNotification.link || selectedNotification.actionUrl || '');
+                                    setSelectedNotification(null);
+                                }}
+                            >
+                                {selectedNotification?.link ? 'View Item' : 'Go to Action'}
+                            </Button>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </CandidatePageLayout>
     );
 }
@@ -666,7 +829,9 @@ function NotificationCard({ notification, onDelete, onClick, getIcon }: Notifica
             <Separator />
             <CardContent className="pt-2 pb-2">
                 <p className="text-xs text-muted-foreground">
-                    {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                    {notification.createdAt && !isNaN(new Date(notification.createdAt).getTime())
+                        ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
+                        : 'Recently'}
                 </p>
             </CardContent>
         </Card>

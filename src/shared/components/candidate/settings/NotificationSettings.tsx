@@ -36,7 +36,7 @@ export function NotificationSettings() {
 
     const fetchPreferences = async () => {
         try {
-            const response = await apiClient.get<NotificationPreferences>("/candidate/notifications/preferences");
+            const response = await apiClient.get<NotificationPreferences>("/api/candidate/notifications/preferences");
             if (response.success && response.data) {
                 setPreferences(response.data);
             }
@@ -58,7 +58,7 @@ export function NotificationSettings() {
     const handleSave = async () => {
         setIsSaving(true);
         try {
-            await apiClient.put("/candidate/notifications/preferences", preferences);
+            await apiClient.put("/api/candidate/notifications/preferences", preferences);
             toast.success("Notification preferences saved");
         } catch (error) {
             console.error("Failed to save preferences:", error);

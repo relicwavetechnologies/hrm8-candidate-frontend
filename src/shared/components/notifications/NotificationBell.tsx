@@ -5,7 +5,18 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { Bell } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { formatDistanceToNow } from 'date-fns';
 import { Button } from '@/shared/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from "@/shared/components/ui/dialog";
+import type { Notification } from '@/shared/services/notificationService';
 import { NotificationDropdown } from './NotificationDropdown';
 import { useUniversalNotifications } from '@/shared/hooks/useUniversalNotifications';
 import { cn } from '@/shared/lib/utils';
@@ -16,7 +27,9 @@ interface NotificationBellProps {
 
 export function NotificationBell({ className }: NotificationBellProps) {
     const [isOpen, setIsOpen] = useState(false);
+    const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
     const containerRef = useRef<HTMLDivElement>(null);
+    const navigate = useNavigate();
     const { unreadCount, notifications, isLoading, markAsRead, markAllAsRead, refetch } =
         useUniversalNotifications({ limit: 5, showToasts: true });
 
@@ -90,8 +103,52 @@ export function NotificationBell({ className }: NotificationBellProps) {
                         await markAllAsRead();
                     }}
                     onClose={() => setIsOpen(false)}
+                    onSelect={(notification) => {
+                        setIsOpen(false);
+                        setSelectedNotification(notification);
+                    }}
                 />
             )}
+
+            <Dialog open={!!selectedNotification} onOpenChange={(open) => !open && setSelectedNotification(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2">
+                            {selectedNotification?.title}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {selectedNotification?.createdAt && !isNaN(new Date(selectedNotification.createdAt).getTime())
+                                ? formatDistanceToNow(new Date(selectedNotification.createdAt), { addSuffix: true })
+                                : 'Just now'}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <div className="py-4">
+                        <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
+                            {selectedNotification?.message}
+                        </p>
+                    </div>
+                    <DialogFooter className="sm:justify-between gap-2">
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => setSelectedNotification(null)}
+                        >
+                            Close
+                        </Button>
+                        {(selectedNotification?.link || selectedNotification?.actionUrl) && (
+                            <Button
+                                type="button"
+                                onClick={() => {
+                                    navigate(selectedNotification.link || selectedNotification.actionUrl || '');
+                                    setSelectedNotification(null);
+                                }}
+                            >
+                                {selectedNotification?.link ? 'View Item' : 'Go to Action'}
+                            </Button>
+                        )}
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

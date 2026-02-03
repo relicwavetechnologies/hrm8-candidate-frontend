@@ -17,6 +17,7 @@ import { Label } from '@/shared/components/ui/label';
 import { Checkbox } from '@/shared/components/ui/checkbox';
 import { Input } from '@/shared/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
+import { Skeleton } from '@/shared/components/ui/skeleton';
 import {
   Search,
   Heart,
@@ -257,9 +258,14 @@ export default function JobSearchPage() {
     }
   };
 
-  const loadJobs = useCallback(async () => {
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasMore, setHasMore] = useState(true);
+  const JOBS_PER_PAGE = 20;
+
+  const loadJobs = useCallback(async (page: number = 1, append: boolean = false) => {
     setIsLoading(true);
     try {
+      const offset = (page - 1) * JOBS_PER_PAGE;
       const response = await jobService.getPublicJobs({
         search: searchQuery || undefined,
         location: location || undefined,
@@ -272,39 +278,50 @@ export default function JobSearchPage() {
         salaryMin: salaryMin ? parseFloat(salaryMin) : undefined,
         salaryMax: salaryMax ? parseFloat(salaryMax) : undefined,
         featured: featuredOnly || undefined,
-        limit: 50,
-        offset: 0,
+        limit: JOBS_PER_PAGE,
+        offset: offset,
       });
 
-      // Track search automatically
-      const currentFilters = {
-        search: searchQuery || undefined,
-        location: location || undefined,
-        employmentType: employmentType || undefined,
-        workArrangement: workArrangement || undefined,
-        category: category || undefined,
-        department: department || undefined,
-        salaryMin: salaryMin ? parseFloat(salaryMin) : undefined,
-        salaryMax: salaryMax ? parseFloat(salaryMax) : undefined,
-        featured: featuredOnly || undefined,
-      };
-
-      // Don't await tracking to avoid blocking UI
-      trackSearch(currentFilters);
+      // Track search automatically (only on first page)
+      if (page === 1) {
+        const currentFilters = {
+          search: searchQuery || undefined,
+          location: location || undefined,
+          employmentType: employmentType || undefined,
+          workArrangement: workArrangement || undefined,
+          category: category || undefined,
+          department: department || undefined,
+          salaryMin: salaryMin ? parseFloat(salaryMin) : undefined,
+          salaryMax: salaryMax ? parseFloat(salaryMax) : undefined,
+          featured: featuredOnly || undefined,
+        };
+        trackSearch(currentFilters);
+      }
 
       // Filter out jobs that the candidate has already applied to
       const allJobs = response.data?.jobs || [];
       const filteredJobs = allJobs.filter((job: PublicJob) => !appliedJobIdsRef.current.has(job.id));
 
-      console.log('JobSearchPage - Filtering jobs:', {
-        totalJobs: allJobs.length,
-        appliedJobIds: Array.from(appliedJobIdsRef.current),
-        filteredJobs: filteredJobs.length,
-      });
+      if (append) {
+        setJobs(prev => {
+          const existingIds = new Set(prev.map(j => j.id));
+          const newJobs = filteredJobs.filter((job: PublicJob) => !existingIds.has(job.id));
+          const updatedJobs = [...prev, ...newJobs];
+          // Calculate hasMore based on total loaded vs total available
+          const totalLoaded = updatedJobs.length;
+          const totalAvailable = response.data?.total || 0;
+          setHasMore(totalLoaded < totalAvailable && allJobs.length === JOBS_PER_PAGE);
+          return updatedJobs;
+        });
+      } else {
+        setJobs(filteredJobs);
+        // For initial load, check if there are more jobs than what we fetched
+        const totalAvailable = response.data?.total || 0;
+        setHasMore(filteredJobs.length < totalAvailable && allJobs.length === JOBS_PER_PAGE);
+      }
 
-      setJobs(filteredJobs);
-      // Update total to reflect filtered count
-      setTotalJobs(filteredJobs.length);
+      setTotalJobs(response.data?.total || 0);
+      setCurrentPage(page);
     } catch (error) {
       console.error('Failed to load jobs:', error);
     } finally {
@@ -628,9 +645,11 @@ export default function JobSearchPage() {
 
         {/* Job Listings */}
         <div className="container mx-auto px-4 py-8">
-          {isLoading ? (
-            <div className="flex justify-center items-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+          {isLoading && jobs.length === 0 ? (
+            <div className="space-y-4">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <Skeleton key={i} className="h-48 w-full rounded-xl" />
+              ))}
             </div>
           ) : jobs.length === 0 ? (
             <div className="text-center py-12">
@@ -766,6 +785,26 @@ export default function JobSearchPage() {
                   </CardContent>
                 </Card>
               ))}
+
+              {hasMore && (
+                <div className="flex justify-center mt-8 pb-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => loadJobs(currentPage + 1, true)}
+                    disabled={isLoading}
+                    className="min-w-[200px]"
+                  >
+                    {isLoading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Loading more...
+                      </>
+                    ) : (
+                      'Load More Jobs'
+                    )}
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

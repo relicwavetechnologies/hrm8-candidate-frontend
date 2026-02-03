@@ -3,7 +3,6 @@ import { cn } from '@/shared/lib/utils'
 import { Button } from '@/shared/components/ui/button'
 import {
     LayoutDashboard,
-    User,
     Briefcase,
     GraduationCap,
     FolderOpen,
@@ -11,15 +10,14 @@ import {
     Bookmark,
     ClipboardCheck,
     MessageSquare,
-    Settings,
     X,
 } from 'lucide-react'
+
 import { useIsMobile } from '@/shared/hooks/use-mobile'
 import { SidebarProvider, useSidebar, SidebarInset } from '@/shared/components/ui/sidebar'
 
 const navItems = [
     { label: 'Dashboard', icon: LayoutDashboard, path: '/candidate/dashboard' },
-    { label: 'My Profile', icon: User, path: '/candidate/profile' },
     { label: 'Work History', icon: Briefcase, path: '/candidate/work-history' },
     { label: 'Qualifications', icon: GraduationCap, path: '/candidate/qualifications' },
     { label: 'Documents', icon: FolderOpen, path: '/candidate/documents' },
@@ -27,8 +25,8 @@ const navItems = [
     { label: 'Saved Jobs', icon: Bookmark, path: '/candidate/saved-jobs' },
     { label: 'Assessments', icon: ClipboardCheck, path: '/candidate/assessments' },
     { label: 'Messages', icon: MessageSquare, path: '/candidate/messages' },
-    { label: 'Settings', icon: Settings, path: '/candidate/settings' },
 ]
+
 
 export function CandidateLayout() {
     return (

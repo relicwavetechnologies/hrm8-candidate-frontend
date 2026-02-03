@@ -30,7 +30,7 @@ export function PrivacySettings() {
     const handleExportData = async () => {
         setIsExporting(true);
         try {
-            const response = await apiClient.get<Blob>("/candidate/profile/export", {
+            const response = await apiClient.get<Blob>("/api/candidate/profile/export", {
                 // @ts-ignore - axios responseType passed through RequestInit options is a bit hacky but works with our apiClient setup if handled
                 responseType: 'blob' as any,
             });
@@ -65,7 +65,7 @@ export function PrivacySettings() {
 
         setIsDeleting(true);
         try {
-            await apiClient.delete("/candidate/profile", {
+            await apiClient.delete("/api/candidate/profile", {
                 data: { password: deletePassword }
             });
 

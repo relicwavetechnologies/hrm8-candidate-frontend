@@ -13,6 +13,7 @@ const queryClient = new QueryClient({
 
 import { CandidateAuthProvider, useCandidateAuth } from './contexts/CandidateAuthContext'
 import { WebSocketProvider } from './contexts/WebSocketContext'
+import { ErrorBoundary } from './shared/components/ErrorBoundary'
 
 function WebSocketWrapper({ children }: { children: React.ReactNode }) {
   const { isAuthenticated, candidate } = useCandidateAuth()
@@ -28,18 +29,20 @@ function WebSocketWrapper({ children }: { children: React.ReactNode }) {
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <BrowserRouter future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true
-      }}>
-        <CandidateAuthProvider>
-          <WebSocketWrapper>
-            <AppRoutes />
-          </WebSocketWrapper>
-        </CandidateAuthProvider>
-      </BrowserRouter>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <BrowserRouter future={{
+          v7_startTransition: true,
+          v7_relativeSplatPath: true
+        }}>
+          <CandidateAuthProvider>
+            <WebSocketWrapper>
+              <AppRoutes />
+            </WebSocketWrapper>
+          </CandidateAuthProvider>
+        </BrowserRouter>
+      </QueryClientProvider>
+    </ErrorBoundary>
   )
 }
 

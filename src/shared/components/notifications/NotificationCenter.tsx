@@ -134,7 +134,9 @@ export function NotificationCenter({ userId }: NotificationCenterProps) {
                         {notification.message}
                       </p>
                       <p className="text-xs text-muted-foreground mt-2">
-                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })}
+                        {notification.createdAt && !isNaN(new Date(notification.createdAt).getTime())
+                          ? formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true })
+                          : 'Recently'}
                       </p>
                     </div>
                     <div className="flex items-center gap-1 flex-shrink-0">

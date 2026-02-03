@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import * as React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { applicationService } from '@/shared/services/applicationService';
 import type { Application } from '@/shared/services/applicationService';
@@ -77,6 +78,7 @@ interface VideoInterview {
 interface ApplicationWithDetails extends Application {
   jobDetails?: JobDetails;
   interviews?: VideoInterview[];
+  detailsLoaded?: boolean; // Flag for lazy loading
 }
 
 export default function ApplicationsPage() {
@@ -85,10 +87,12 @@ export default function ApplicationsPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [expandedApplications, setExpandedApplications] = useState<Set<string>>(new Set());
+  const [loadingDetails, setLoadingDetails] = useState<Set<string>>(new Set());
   const [withdrawDialogOpen, setWithdrawDialogOpen] = useState<string | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<string | null>(null);
-  const [loadingInterviews, setLoadingInterviews] = useState<Set<string>>(new Set());
   const [previewDocument, setPreviewDocument] = useState<{ url: string; name: string; type: 'resume' | 'coverLetter' } | null>(null);
+  const [visibleCount, setVisibleCount] = useState(10); // Restored for Load More
+  const APPLICATIONS_PER_PAGE = 10;
   const navigate = useNavigate();
   const { toast } = useToast();
 
@@ -102,49 +106,28 @@ export default function ApplicationsPage() {
       const response = await applicationService.getCandidateApplications();
       const apps = response.data?.applications || [];
 
-      console.log('Loaded applications:', apps);
+      // Initial load - lightweight summary only
+      const appsWithSummary = apps.map((app: any) => ({
+        ...app,
+        appliedDate: app.appliedDate || app.createdAt || new Date().toISOString(),
+        detailsLoaded: false, // Mark as needing details
+        jobDetails: app.job ? {
+          id: app.job.id,
+          title: app.job.title,
+          location: app.job.location,
+          employmentType: app.job.employmentType || app.job.employment_type,
+          workArrangement: app.job.workArrangement || app.job.work_arrangement,
+          salaryMin: app.job.salaryMin || app.job.salary_min,
+          salaryMax: app.job.salaryMax || app.job.salary_max,
+          salaryCurrency: app.job.salaryCurrency || app.job.salary_currency,
+          company: app.job.company ? {
+            id: app.job.company.id,
+            name: app.job.company.name,
+          } : undefined,
+        } : undefined
+      }));
 
-      // Load job details for each application
-      const appsWithDetails = await Promise.all(
-        apps.map(async (app: any) => {
-          const details: ApplicationWithDetails = {
-            ...app,
-            // Ensure date strings are properly formatted
-            appliedDate: app.appliedDate || app.createdAt || new Date().toISOString(),
-          };
-
-          // Log document URLs for debugging
-          console.log(`Application ${app.id} documents:`, {
-            resumeUrl: app.resumeUrl,
-            coverLetterUrl: app.coverLetterUrl,
-            portfolioUrl: app.portfolioUrl,
-            linkedInUrl: app.linkedInUrl,
-            websiteUrl: app.websiteUrl,
-          });
-
-          // Map job details directly from application data (no need for separate API call)
-          if (app.job) {
-            details.jobDetails = {
-              id: app.job.id,
-              title: app.job.title,
-              location: app.job.location,
-              employmentType: app.job.employmentType || app.job.employment_type,
-              workArrangement: app.job.workArrangement || app.job.work_arrangement,
-              salaryMin: app.job.salaryMin || app.job.salary_min,
-              salaryMax: app.job.salaryMax || app.job.salary_max,
-              salaryCurrency: app.job.salaryCurrency || app.job.salary_currency,
-              company: app.job.company ? {
-                id: app.job.company.id,
-                name: app.job.company.name,
-              } : undefined,
-            };
-          }
-
-          return details;
-        })
-      );
-
-      setApplications(appsWithDetails);
+      setApplications(appsWithSummary);
     } catch (error) {
       console.error('Failed to load applications:', error);
       toast({
@@ -157,53 +140,63 @@ export default function ApplicationsPage() {
     }
   };
 
-  const loadInterviews = async (applicationId: string) => {
-    if (loadingInterviews.has(applicationId)) return;
+  const toggleApplication = async (id: string) => {
+    // If expanding and details not loaded, fetch them
+    const isExpanding = !expandedApplications.has(id);
+    const app = applications.find(a => a.id === id);
 
-    setLoadingInterviews(prev => new Set(prev).add(applicationId));
+    if (isExpanding && app && !app.detailsLoaded) {
+      setLoadingDetails(prev => new Set(prev).add(id));
+      try {
+        const response = await applicationService.getApplication(id);
+        if (response.data?.application) {
+          const fullApp = response.data.application;
 
-    try {
-      // Fetch interviews for this application
-      const response = await apiClient.get<{ interviews: VideoInterview[] }>(
-        `/api/video-interviews/application/${applicationId}`
-      );
-
-      if (response.success && response.data?.interviews) {
-        setApplications(prev => prev.map(app =>
-          app.id === applicationId
-            ? { ...app, interviews: response.data!.interviews }
-            : app
-        ));
+          setApplications(prev => prev.map(a =>
+            a.id === id
+              ? {
+                ...a,
+                ...fullApp,
+                detailsLoaded: true,
+                jobDetails: (fullApp as any).job ? {
+                  ...a.jobDetails!,
+                  ...((fullApp as any).job)
+                } : a.jobDetails
+              }
+              : a
+          ));
+        }
+      } catch (error) {
+        console.error('Failed to load application details', error);
+        toast({
+          title: 'Failed to load details',
+          variant: 'destructive'
+        });
+      } finally {
+        setLoadingDetails(prev => {
+          const next = new Set(prev);
+          next.delete(id);
+          return next;
+        });
       }
-    } catch (error) {
-      console.error(`Failed to load interviews for ${applicationId}:`, error);
-      // If endpoint doesn't exist, try alternative approach
-      // We can fetch from video interviews by application ID if available
-    } finally {
-      setLoadingInterviews(prev => {
-        const next = new Set(prev);
-        next.delete(applicationId);
-        return next;
-      });
     }
-  };
 
-  const toggleApplication = (applicationId: string) => {
     setExpandedApplications(prev => {
       const next = new Set(prev);
-      if (next.has(applicationId)) {
-        next.delete(applicationId);
+      if (prev.has(id)) {
+        next.delete(id);
       } else {
-        next.add(applicationId);
-        // Load interviews when expanding
-        const app = applications.find(a => a.id === applicationId);
-        if (app && !app.interviews) {
-          loadInterviews(applicationId);
-        }
+        next.add(id);
       }
       return next;
     });
   };
+
+  // ... (rest of the component)
+
+
+
+
 
   const handleWithdraw = async (applicationId: string) => {
     try {
@@ -349,6 +342,19 @@ export default function ApplicationsPage() {
     );
   });
 
+  // Paginate the filtered results
+  const paginatedApplications = filteredApplications.slice(0, visibleCount);
+  const hasMoreApplications = filteredApplications.length > visibleCount;
+
+  const handleLoadMore = () => {
+    setVisibleCount(prev => prev + APPLICATIONS_PER_PAGE);
+  };
+
+  // Reset visible count when filters change
+  React.useEffect(() => {
+    setVisibleCount(APPLICATIONS_PER_PAGE);
+  }, [searchQuery, statusFilter]);
+
   const canWithdraw = (status: string) => {
     return !['WITHDRAWN', 'REJECTED', 'HIRED'].includes(status);
   };
@@ -437,7 +443,7 @@ export default function ApplicationsPage() {
               <div>
                 <CardTitle className="text-base font-semibold">Applications</CardTitle>
                 <CardDescription className="text-sm">
-                  {filteredApplications.length} of {applications.length} application{applications.length !== 1 ? 's' : ''}
+                  {paginatedApplications.length} of {filteredApplications.length} application{filteredApplications.length !== 1 ? 's' : ''} (Total: {applications.length})
                 </CardDescription>
               </div>
             </div>
@@ -473,7 +479,7 @@ export default function ApplicationsPage() {
               </div>
             ) : (
               <div className="space-y-4">
-                {filteredApplications.map((app) => {
+                {paginatedApplications.map((app) => {
                   const isExpanded = expandedApplications.has(app.id);
                   const hasInterviews = app.interviews && app.interviews.length > 0;
 
@@ -526,8 +532,14 @@ export default function ApplicationsPage() {
                               variant="ghost"
                               size="sm"
                               onClick={() => toggleApplication(app.id)}
+                              disabled={loadingDetails.has(app.id)}
                             >
-                              {isExpanded ? (
+                              {loadingDetails.has(app.id) ? (
+                                <>
+                                  <span className="animate-spin mr-2">⏳</span>
+                                  Loading...
+                                </>
+                              ) : isExpanded ? (
                                 <>
                                   <ChevronUp className="h-4 w-4 mr-2" />
                                   Hide Details
@@ -546,152 +558,178 @@ export default function ApplicationsPage() {
                       {isExpanded && (
                         <>
                           <Separator />
-                          <div className="p-4 space-y-6">
-                            {/* Job Details */}
-                            {app.jobDetails && (
+                          {loadingDetails.has(app.id) ? (
+                            <div className="p-6 space-y-4">
+                              <Skeleton className="h-4 w-1/3" />
+                              <Skeleton className="h-20 w-full" />
+                              <Skeleton className="h-20 w-full" />
+                            </div>
+                          ) : (
+                            <div className="p-4 space-y-6">
+                              {/* Job Details */}
+                              {app.jobDetails && (
+                                <div>
+                                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                    <Briefcase className="h-4 w-4" />
+                                    Job Details
+                                  </h4>
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                                    {app.jobDetails.location && (
+                                      <div className="flex items-center gap-2 text-muted-foreground">
+                                        <MapPin className="h-4 w-4" />
+                                        <span>{app.jobDetails.location}</span>
+                                      </div>
+                                    )}
+                                    {app.jobDetails.employmentType && (
+                                      <div className="flex items-center gap-2 text-muted-foreground">
+                                        <Briefcase className="h-4 w-4" />
+                                        <span>{app.jobDetails.employmentType}</span>
+                                      </div>
+                                    )}
+                                    {app.jobDetails.workArrangement && (
+                                      <div className="flex items-center gap-2 text-muted-foreground">
+                                        <Clock className="h-4 w-4" />
+                                        <span>{app.jobDetails.workArrangement}</span>
+                                      </div>
+                                    )}
+                                    {(app.jobDetails.salaryMin || app.jobDetails.salaryMax) && (
+                                      <div className="flex items-center gap-2 text-muted-foreground">
+                                        <DollarSign className="h-4 w-4" />
+                                        <span>
+                                          {app.jobDetails.salaryMin && app.jobDetails.salaryMax
+                                            ? `${app.jobDetails.salaryCurrency || ''} ${app.jobDetails.salaryMin} - ${app.jobDetails.salaryMax}`
+                                            : app.jobDetails.salaryMin
+                                              ? `${app.jobDetails.salaryCurrency || ''} ${app.jobDetails.salaryMin}+`
+                                              : `${app.jobDetails.salaryCurrency || ''} Up to ${app.jobDetails.salaryMax}`}
+                                        </span>
+                                      </div>
+                                    )}
+                                  </div>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="mt-3"
+                                    onClick={() => navigate(`/jobs/${app.jobId}`)}
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5 mr-2" />
+                                    View Job Posting
+                                  </Button>
+                                </div>
+                              )}
+
+                              {/* Documents Used */}
                               <div>
                                 <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                  <Briefcase className="h-4 w-4" />
-                                  Job Details
+                                  <FileCheck className="h-4 w-4" />
+                                  Documents Used
                                 </h4>
-                                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                                  {app.jobDetails.location && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                      <MapPin className="h-4 w-4" />
-                                      <span>{app.jobDetails.location}</span>
+                                <div className="space-y-2">
+                                  {app.resumeUrl ? (
+                                    <div className="flex items-center justify-between p-2 border rounded-md hover:bg-muted/50 transition-colors">
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                        <span className="text-sm truncate">Resume</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            const urlParts = app.resumeUrl!.split('/');
+                                            const filename = urlParts[urlParts.length - 1].split('?')[0] || 'resume.pdf';
+                                            setPreviewDocument({ url: app.resumeUrl!, name: filename, type: 'resume' });
+                                          }}
+                                        >
+                                          <Eye className="h-3.5 w-3.5 mr-1" />
+                                          Preview
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            const urlParts = app.resumeUrl!.split('/');
+                                            const filename = urlParts[urlParts.length - 1].split('?')[0] || 'resume.pdf';
+                                            handleDownloadFile(app.resumeUrl!, filename);
+                                          }}
+                                        >
+                                          <Download className="h-3.5 w-3.5 mr-1" />
+                                          Download
+                                        </Button>
+                                      </div>
                                     </div>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">No resume attached</p>
                                   )}
-                                  {app.jobDetails.employmentType && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                      <Briefcase className="h-4 w-4" />
-                                      <span>{app.jobDetails.employmentType}</span>
-                                    </div>
-                                  )}
-                                  {app.jobDetails.workArrangement && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                      <Clock className="h-4 w-4" />
-                                      <span>{app.jobDetails.workArrangement}</span>
-                                    </div>
-                                  )}
-                                  {(app.jobDetails.salaryMin || app.jobDetails.salaryMax) && (
-                                    <div className="flex items-center gap-2 text-muted-foreground">
-                                      <DollarSign className="h-4 w-4" />
-                                      <span>
-                                        {app.jobDetails.salaryMin && app.jobDetails.salaryMax
-                                          ? `${app.jobDetails.salaryCurrency || ''} ${app.jobDetails.salaryMin} - ${app.jobDetails.salaryMax}`
-                                          : app.jobDetails.salaryMin
-                                            ? `${app.jobDetails.salaryCurrency || ''} ${app.jobDetails.salaryMin}+`
-                                            : `${app.jobDetails.salaryCurrency || ''} Up to ${app.jobDetails.salaryMax}`}
-                                      </span>
-                                    </div>
-                                  )}
-                                </div>
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="mt-3"
-                                  onClick={() => navigate(`/jobs/${app.jobId}`)}
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5 mr-2" />
-                                  View Job Posting
-                                </Button>
-                              </div>
-                            )}
 
-                            {/* Documents Used */}
-                            <div>
-                              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                <FileCheck className="h-4 w-4" />
-                                Documents Used
-                              </h4>
-                              <div className="space-y-2">
-                                {app.resumeUrl ? (
-                                  <div className="flex items-center justify-between p-2 border rounded-md hover:bg-muted/50 transition-colors">
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                      <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                      <span className="text-sm truncate">Resume</span>
+                                  {app.coverLetterUrl ? (
+                                    <div className="flex items-center justify-between p-2 border rounded-md hover:bg-muted/50 transition-colors">
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                        <span className="text-sm truncate">Cover Letter</span>
+                                      </div>
+                                      <div className="flex items-center gap-1">
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            const urlParts = app.coverLetterUrl!.split('/');
+                                            const filename = urlParts[urlParts.length - 1].split('?')[0] || 'cover-letter.pdf';
+                                            setPreviewDocument({ url: app.coverLetterUrl!, name: filename, type: 'coverLetter' });
+                                          }}
+                                        >
+                                          <Eye className="h-3.5 w-3.5 mr-1" />
+                                          Preview
+                                        </Button>
+                                        <Button
+                                          variant="ghost"
+                                          size="sm"
+                                          onClick={() => {
+                                            const urlParts = app.coverLetterUrl!.split('/');
+                                            const filename = urlParts[urlParts.length - 1].split('?')[0] || 'cover-letter.pdf';
+                                            handleDownloadFile(app.coverLetterUrl!, filename);
+                                          }}
+                                        >
+                                          <Download className="h-3.5 w-3.5 mr-1" />
+                                          Download
+                                        </Button>
+                                      </div>
                                     </div>
-                                    <div className="flex items-center gap-1">
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          const urlParts = app.resumeUrl!.split('/');
-                                          const filename = urlParts[urlParts.length - 1].split('?')[0] || 'resume.pdf';
-                                          setPreviewDocument({ url: app.resumeUrl!, name: filename, type: 'resume' });
-                                        }}
-                                      >
-                                        <Eye className="h-3.5 w-3.5 mr-1" />
-                                        Preview
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          const urlParts = app.resumeUrl!.split('/');
-                                          const filename = urlParts[urlParts.length - 1].split('?')[0] || 'resume.pdf';
-                                          handleDownloadFile(app.resumeUrl!, filename);
-                                        }}
-                                      >
-                                        <Download className="h-3.5 w-3.5 mr-1" />
-                                        Download
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-muted-foreground">No resume attached</p>
-                                )}
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">No cover letter attached</p>
+                                  )}
 
-                                {app.coverLetterUrl ? (
-                                  <div className="flex items-center justify-between p-2 border rounded-md hover:bg-muted/50 transition-colors">
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                      <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                      <span className="text-sm truncate">Cover Letter</span>
-                                    </div>
-                                    <div className="flex items-center gap-1">
+                                  {app.portfolioUrl ? (
+                                    <div className="flex items-center justify-between p-2 border rounded-md hover:bg-muted/50 transition-colors">
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <LinkIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                        <a
+                                          href={app.portfolioUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-sm text-primary hover:underline truncate"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (!app.portfolioUrl?.startsWith('http')) {
+                                              e.preventDefault();
+                                              toast({
+                                                title: 'Invalid URL',
+                                                description: 'This portfolio link is not valid',
+                                                variant: 'destructive',
+                                              });
+                                            }
+                                          }}
+                                        >
+                                          Portfolio Link
+                                        </a>
+                                      </div>
                                       <Button
                                         variant="ghost"
                                         size="sm"
-                                        onClick={() => {
-                                          const urlParts = app.coverLetterUrl!.split('/');
-                                          const filename = urlParts[urlParts.length - 1].split('?')[0] || 'cover-letter.pdf';
-                                          setPreviewDocument({ url: app.coverLetterUrl!, name: filename, type: 'coverLetter' });
-                                        }}
-                                      >
-                                        <Eye className="h-3.5 w-3.5 mr-1" />
-                                        Preview
-                                      </Button>
-                                      <Button
-                                        variant="ghost"
-                                        size="sm"
-                                        onClick={() => {
-                                          const urlParts = app.coverLetterUrl!.split('/');
-                                          const filename = urlParts[urlParts.length - 1].split('?')[0] || 'cover-letter.pdf';
-                                          handleDownloadFile(app.coverLetterUrl!, filename);
-                                        }}
-                                      >
-                                        <Download className="h-3.5 w-3.5 mr-1" />
-                                        Download
-                                      </Button>
-                                    </div>
-                                  </div>
-                                ) : (
-                                  <p className="text-sm text-muted-foreground">No cover letter attached</p>
-                                )}
-
-                                {app.portfolioUrl ? (
-                                  <div className="flex items-center justify-between p-2 border rounded-md hover:bg-muted/50 transition-colors">
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                      <LinkIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                      <a
-                                        href={app.portfolioUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-sm text-primary hover:underline truncate"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          if (!app.portfolioUrl?.startsWith('http')) {
-                                            e.preventDefault();
+                                          if (app.portfolioUrl?.startsWith('http')) {
+                                            window.open(app.portfolioUrl, '_blank', 'noopener,noreferrer');
+                                          } else {
                                             toast({
                                               title: 'Invalid URL',
                                               description: 'This portfolio link is not valid',
@@ -700,153 +738,142 @@ export default function ApplicationsPage() {
                                           }
                                         }}
                                       >
-                                        Portfolio Link
-                                      </a>
+                                        <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                                        Open
+                                      </Button>
                                     </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        if (app.portfolioUrl?.startsWith('http')) {
-                                          window.open(app.portfolioUrl, '_blank', 'noopener,noreferrer');
-                                        } else {
-                                          toast({
-                                            title: 'Invalid URL',
-                                            description: 'This portfolio link is not valid',
-                                            variant: 'destructive',
-                                          });
-                                        }
-                                      }}
-                                    >
-                                      <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                                      Open
-                                    </Button>
+                                  ) : (
+                                    <p className="text-sm text-muted-foreground">No portfolio attached</p>
+                                  )}
+
+                                  {app.linkedInUrl && (
+                                    <div className="flex items-center justify-between p-2 border rounded-md hover:bg-muted/50 transition-colors">
+                                      <div className="flex items-center gap-2 flex-1 min-w-0">
+                                        <LinkIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                                        <a
+                                          href={app.linkedInUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-sm text-primary hover:underline truncate"
+                                        >
+                                          LinkedIn Profile
+                                        </a>
+                                      </div>
+                                      <Button
+                                        variant="ghost"
+                                        size="sm"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          window.open(app.linkedInUrl, '_blank', 'noopener,noreferrer');
+                                        }}
+                                      >
+                                        <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                                        Open
+                                      </Button>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* Interviews */}
+                              <div>
+                                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                                  <Video className="h-4 w-4" />
+                                  Interviews
+                                </h4>
+                                {hasInterviews ? (
+                                  <div className="space-y-2">
+                                    {app.interviews!.map((interview) => (
+                                      <Card key={interview.id} className="p-3">
+                                        <div className="flex items-start justify-between">
+                                          <div className="flex-1 space-y-1">
+                                            <div className="flex items-center gap-2">
+                                              {getInterviewStatusBadge(interview.status)}
+                                              <span className="text-xs text-muted-foreground">
+                                                {interview.type}
+                                              </span>
+                                            </div>
+                                            <div className="flex items-center gap-2 text-sm">
+                                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                              <span>
+                                                {format(new Date(interview.scheduledDate), 'PPP p')}
+                                              </span>
+                                              <span className="text-muted-foreground">•</span>
+                                              <span className="text-muted-foreground">
+                                                {interview.duration} minutes
+                                              </span>
+                                            </div>
+                                            {interview.meetingLink && (
+                                              <Button
+                                                variant="outline"
+                                                size="sm"
+                                                className="mt-2"
+                                                onClick={() => window.open(interview.meetingLink, '_blank')}
+                                              >
+                                                <Video className="h-3.5 w-3.5 mr-2" />
+                                                Join Meeting
+                                              </Button>
+                                            )}
+                                            {interview.notes && (
+                                              <p className="text-xs text-muted-foreground mt-2">
+                                                {interview.notes}
+                                              </p>
+                                            )}
+                                          </div>
+                                        </div>
+                                      </Card>
+                                    ))}
                                   </div>
                                 ) : (
-                                  <p className="text-sm text-muted-foreground">No portfolio attached</p>
+                                  <p className="text-sm text-muted-foreground">
+                                    No interviews scheduled yet
+                                  </p>
                                 )}
+                              </div>
 
-                                {app.linkedInUrl && (
-                                  <div className="flex items-center justify-between p-2 border rounded-md hover:bg-muted/50 transition-colors">
-                                    <div className="flex items-center gap-2 flex-1 min-w-0">
-                                      <LinkIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                                      <a
-                                        href={app.linkedInUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-sm text-primary hover:underline truncate"
-                                      >
-                                        LinkedIn Profile
-                                      </a>
-                                    </div>
-                                    <Button
-                                      variant="ghost"
-                                      size="sm"
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        window.open(app.linkedInUrl, '_blank', 'noopener,noreferrer');
-                                      }}
-                                    >
-                                      <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                                      Open
-                                    </Button>
-                                  </div>
+                              {/* Actions */}
+                              <div className="flex items-center gap-2 pt-2 border-t">
+                                {canWithdraw(app.status) && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => setWithdrawDialogOpen(app.id)}
+                                  >
+                                    <X className="h-3.5 w-3.5 mr-2" />
+                                    Withdraw Application
+                                  </Button>
+                                )}
+                                {canDelete(app.status) && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="text-destructive hover:text-destructive"
+                                    onClick={() => setDeleteDialogOpen(app.id)}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                    Delete Application
+                                  </Button>
                                 )}
                               </div>
                             </div>
-
-                            {/* Interviews */}
-                            <div>
-                              <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                <Video className="h-4 w-4" />
-                                Interviews
-                              </h4>
-                              {loadingInterviews.has(app.id) ? (
-                                <div className="space-y-2">
-                                  <Skeleton className="h-16 w-full" />
-                                  <Skeleton className="h-16 w-full" />
-                                </div>
-                              ) : hasInterviews ? (
-                                <div className="space-y-2">
-                                  {app.interviews!.map((interview) => (
-                                    <Card key={interview.id} className="p-3">
-                                      <div className="flex items-start justify-between">
-                                        <div className="flex-1 space-y-1">
-                                          <div className="flex items-center gap-2">
-                                            {getInterviewStatusBadge(interview.status)}
-                                            <span className="text-xs text-muted-foreground">
-                                              {interview.type}
-                                            </span>
-                                          </div>
-                                          <div className="flex items-center gap-2 text-sm">
-                                            <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                                            <span>
-                                              {format(new Date(interview.scheduledDate), 'PPP p')}
-                                            </span>
-                                            <span className="text-muted-foreground">•</span>
-                                            <span className="text-muted-foreground">
-                                              {interview.duration} minutes
-                                            </span>
-                                          </div>
-                                          {interview.meetingLink && (
-                                            <Button
-                                              variant="outline"
-                                              size="sm"
-                                              className="mt-2"
-                                              onClick={() => window.open(interview.meetingLink, '_blank')}
-                                            >
-                                              <Video className="h-3.5 w-3.5 mr-2" />
-                                              Join Meeting
-                                            </Button>
-                                          )}
-                                          {interview.notes && (
-                                            <p className="text-xs text-muted-foreground mt-2">
-                                              {interview.notes}
-                                            </p>
-                                          )}
-                                        </div>
-                                      </div>
-                                    </Card>
-                                  ))}
-                                </div>
-                              ) : (
-                                <p className="text-sm text-muted-foreground">
-                                  No interviews scheduled yet
-                                </p>
-                              )}
-                            </div>
-
-                            {/* Actions */}
-                            <div className="flex items-center gap-2 pt-2 border-t">
-                              {canWithdraw(app.status) && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => setWithdrawDialogOpen(app.id)}
-                                >
-                                  <X className="h-3.5 w-3.5 mr-2" />
-                                  Withdraw Application
-                                </Button>
-                              )}
-                              {canDelete(app.status) && (
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => setDeleteDialogOpen(app.id)}
-                                >
-                                  <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                  Delete Application
-                                </Button>
-                              )}
-                            </div>
-                          </div>
+                          )}
                         </>
                       )}
                     </Card>
                   );
                 })}
+
+                {hasMoreApplications && (
+                  <div className="flex justify-center pt-4">
+                    <Button
+                      variant="outline"
+                      onClick={handleLoadMore}
+                      className="w-full md:w-auto min-w-[200px]"
+                    >
+                      Load More Applications
+                    </Button>
+                  </div>
+                )}
               </div>
             )}
           </CardContent>

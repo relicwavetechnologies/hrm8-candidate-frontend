@@ -65,16 +65,6 @@ export default function JobApplicationPage() {
                 portfolioUrl: (candidate as any).portfolioUrl || '',
                 websiteUrl: (candidate as any).websiteUrl || '',
             }));
-            setFormData(prev => ({
-                ...prev,
-                firstName: candidate.firstName || '',
-                lastName: candidate.lastName || '',
-                email: candidate.email || '',
-                phone: candidate.phone || '',
-                linkedInUrl: candidate.linkedInUrl || '',
-                portfolioUrl: (candidate as any).portfolioUrl || '',
-                websiteUrl: (candidate as any).websiteUrl || '',
-            }));
             fetchResumes();
         }
     }, [isAuthenticated, candidate]);
@@ -186,11 +176,11 @@ export default function JobApplicationPage() {
                 }
                 try {
                     resumeUrl = await uploadFile(resumeFile, 'resume');
-                    // Optionally parse and autofill here if user requested, but for now just submit
                 } catch (err) {
                     console.error(err);
-                    resumeUrl = "https://example.com/resume.pdf"; // Fallback/Mock
-                    toast.info("Using mock resume URL for dev env");
+                    toast.error("Failed to upload resume. Please try again.");
+                    setSubmitting(false);
+                    return;
                 }
             } else if (selectedResumeId !== 'default') {
                 // User picked a specific existing resume
@@ -206,7 +196,8 @@ export default function JobApplicationPage() {
                 try {
                     coverLetterUrl = await uploadFile(coverLetterFile, 'cover_letter');
                 } catch (err) {
-                    coverLetterUrl = "https://example.com/cover.pdf";
+                    console.error(err);
+                    toast.error("Failed to upload cover letter. Proceeding without it.");
                 }
             }
 

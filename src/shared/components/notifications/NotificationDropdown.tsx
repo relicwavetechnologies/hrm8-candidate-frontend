@@ -32,6 +32,7 @@ interface NotificationDropdownProps {
     onMarkAsRead: (notificationId: string) => void;
     onMarkAllAsRead: () => void;
     onClose: () => void;
+    onSelect?: (notification: Notification) => void;
 }
 
 const getNotificationIcon = (type: string) => {
@@ -82,6 +83,7 @@ export function NotificationDropdown({
     onMarkAsRead,
     onMarkAllAsRead,
     onClose,
+    onSelect
 }: NotificationDropdownProps) {
     const navigate = useNavigate();
     const { pathname } = useLocation();
@@ -94,15 +96,20 @@ export function NotificationDropdown({
             onMarkAsRead(notification.id);
         }
 
-        // Navigate to expanded view page based on context
         onClose();
 
-        if (isCandidatePath) {
-            navigate(`/candidate/notifications/${notification.id}`);
-        } else if (isDashPath) {
-            navigate(`/dash/notification/${notification.id}`);
+        // Delegate selection to parent (to open Dialog)
+        if (onSelect) {
+            onSelect(notification);
         } else {
-            navigate(`/notifications/${notification.id}`);
+            // Fallback to navigation if no onSelect provided
+            if (isCandidatePath) {
+                navigate(`/candidate/notifications/${notification.id}`);
+            } else if (isDashPath) {
+                navigate(`/dash/notification/${notification.id}`);
+            } else {
+                navigate(`/notifications/${notification.id}`);
+            }
         }
     };
 

@@ -12,6 +12,7 @@ export interface Notification {
     message: string;
     data?: Record<string, unknown>;
     actionUrl?: string;
+    link?: string;
     read: boolean;
     readAt?: string;
     createdAt: string;

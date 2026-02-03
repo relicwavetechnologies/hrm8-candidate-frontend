@@ -48,7 +48,7 @@ export function SecuritySettings() {
     async function onSubmit(data: PasswordFormValues) {
         setIsLoading(true);
         try {
-            await apiClient.put("/candidate/profile/password", {
+            await apiClient.put("/api/candidate/profile/password", {
                 currentPassword: data.currentPassword,
                 newPassword: data.newPassword,
             });

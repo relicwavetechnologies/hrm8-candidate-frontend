@@ -9,11 +9,13 @@ import {
 } from "@/shared/components/ui/dropdown-menu";
 import { Button } from "@/shared/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/shared/components/ui/avatar";
-import { User, Settings, Keyboard, LogOut } from "lucide-react";
+import { User, Settings, LogOut } from "lucide-react";
 import { useCandidateAuth } from "@/contexts/CandidateAuthContext";
+import { useNavigate } from "react-router-dom";
 
 export function CandidateUserNav() {
   const { candidate, logout } = useCandidateAuth();
+  const navigate = useNavigate();
 
   const getInitials = (firstName: string, lastName: string) => {
     return `${firstName?.[0] || ""}${lastName?.[0] || ""}`.toUpperCase().slice(0, 2);
@@ -52,17 +54,13 @@ export function CandidateUserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/candidate/profile')}>
             <User className="mr-2 h-4 w-4" />
             <span>Profile</span>
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => navigate('/candidate/settings')}>
             <Settings className="mr-2 h-4 w-4" />
             <span>Settings</span>
-          </DropdownMenuItem>
-          <DropdownMenuItem>
-            <Keyboard className="mr-2 h-4 w-4" />
-            <span>Keyboard shortcuts</span>
           </DropdownMenuItem>
         </DropdownMenuGroup>
         <DropdownMenuSeparator />
@@ -74,6 +72,7 @@ export function CandidateUserNav() {
     </DropdownMenu>
   );
 }
+
 
 
 
