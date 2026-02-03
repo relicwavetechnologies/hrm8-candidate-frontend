@@ -4,7 +4,7 @@
  */
 
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { applicationService } from '@/shared/services/applicationService';
 import type { Application } from '@/shared/services/applicationService';
 import { CandidateAuthGuard } from '@/shared/components/auth/CandidateAuthGuard';

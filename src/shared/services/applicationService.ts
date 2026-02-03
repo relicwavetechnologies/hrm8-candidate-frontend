@@ -55,6 +55,29 @@ class ApplicationService {
     return apiClient.post<{ application: Application; message: string }>('/api/applications', data);
   }
 
+  async submitGuestApplication(data: {
+    jobId: string;
+    firstName: string;
+    lastName: string;
+    email: string;
+    phone?: string;
+    resume: File;
+    cover_letter?: File;
+    portfolio?: File;
+  }) {
+    const formData = new FormData();
+    formData.append('jobId', data.jobId);
+    formData.append('firstName', data.firstName);
+    formData.append('lastName', data.lastName);
+    formData.append('email', data.email);
+    if (data.phone) formData.append('phone', data.phone);
+    formData.append('resume', data.resume);
+    if (data.cover_letter) formData.append('cover_letter', data.cover_letter);
+    if (data.portfolio) formData.append('portfolio', data.portfolio);
+
+    return apiClient.upload<{ applicationId: string; message: string }>('/api/public/applications/guest', formData);
+  }
+
   async getApplication(id: string) {
     return apiClient.get<{ application: Application }>(`/api/applications/${id}`);
   }

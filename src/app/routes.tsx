@@ -42,7 +42,7 @@ export function AppRoutes() {
             <Route path="/jobs" element={<JobSearchPage />} />
             <Route path="/jobs/:id" element={<JobDetailPage />} />
             <Route path="/jobs/:id/apply" element={<JobApplicationPage />} />
-            <Route path="/companies" element={<CareersPage />} />
+            <Route path="/careers" element={<CareersPage />} />
             <Route path="/companies/:id" element={<CompanyDetailPage />} />
 
             {/* Candidate Protected Routes */}

@@ -306,22 +306,18 @@ export default function JobSearchPage() {
         setJobs(prev => {
           const existingIds = new Set(prev.map(j => j.id));
           const newJobs = filteredJobs.filter((job: PublicJob) => !existingIds.has(job.id));
-          const updatedJobs = [...prev, ...newJobs];
-          // Calculate hasMore based on total loaded vs total available
-          const totalLoaded = updatedJobs.length;
-          const totalAvailable = response.data?.total || 0;
-          setHasMore(totalLoaded < totalAvailable && allJobs.length === JOBS_PER_PAGE);
-          return updatedJobs;
+          return [...prev, ...newJobs];
         });
       } else {
         setJobs(filteredJobs);
-        // For initial load, check if there are more jobs than what we fetched
-        const totalAvailable = response.data?.total || 0;
-        setHasMore(filteredJobs.length < totalAvailable && allJobs.length === JOBS_PER_PAGE);
       }
 
       setTotalJobs(response.data?.total || 0);
       setCurrentPage(page);
+
+      // Determine if there's more to load from the server
+      const totalAvailable = response.data?.total || 0;
+      setHasMore(offset + allJobs.length < totalAvailable);
     } catch (error) {
       console.error('Failed to load jobs:', error);
     } finally {

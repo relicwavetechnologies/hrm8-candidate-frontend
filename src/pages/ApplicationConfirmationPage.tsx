@@ -3,7 +3,7 @@
  * Shows confirmation after successful application submission
  */
 
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate } from 'react-router-dom';
 import { CandidateAuthGuard } from '@/shared/components/auth/CandidateAuthGuard';
 import { CandidatePageLayout } from '@/shared/components/layouts/CandidatePageLayout';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';

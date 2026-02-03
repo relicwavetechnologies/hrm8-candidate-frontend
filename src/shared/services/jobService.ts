@@ -39,6 +39,34 @@ export interface PublicJob {
   createdAt: string;
 }
 
+export interface ApprovedCompany {
+  id: string;
+  name: string;
+  website: string;
+  domain: string;
+  logoUrl: string | null;
+  bannerUrl: string | null;
+  about: string | null;
+  social: {
+    linkedin?: string;
+    twitter?: string;
+    facebook?: string;
+    instagram?: string;
+  } | null;
+  images: string[] | null;
+  jobCount: number;
+}
+
+export interface CompanyDetailResponse {
+  company: ApprovedCompany;
+  jobs: PublicJob[];
+  totalJobs: number;
+  filters: {
+    departments: string[];
+    locations: string[];
+  };
+}
+
 export interface PublicJobSearchParams {
   page?: number;
   limit?: number;
@@ -198,6 +226,29 @@ class JobService {
 
     return apiClient.get<PublicJobSearchResponse>(
       `/api/public/companies/${companyId}/jobs${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    );
+  }
+
+  async getPublicCompanies(params?: { search?: string; page?: number; limit?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.search) queryParams.append('search', params.search);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+    return apiClient.get<{ companies: ApprovedCompany[]; pagination: any }>(
+      `/api/public/companies${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
+    );
+  }
+
+  async getPublicCompanyDetail(id: string, params?: { department?: string; location?: string; page?: number; limit?: number }) {
+    const queryParams = new URLSearchParams();
+    if (params?.department) queryParams.append('department', params.department);
+    if (params?.location) queryParams.append('location', params.location);
+    if (params?.page) queryParams.append('page', params.page.toString());
+    if (params?.limit) queryParams.append('limit', params.limit.toString());
+
+    return apiClient.get<CompanyDetailResponse>(
+      `/api/public/companies/${id}${queryParams.toString() ? `?${queryParams.toString()}` : ''}`
     );
   }
 }

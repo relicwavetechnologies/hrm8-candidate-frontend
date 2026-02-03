@@ -1,22 +1,17 @@
-/**
- * Public Company Detail Page
- * Shows approved company's careers page with branding and job listings
- */
-
-import { useState, useEffect } from 'react';
-import { useParams, Link } from 'react-router-dom';
-import { Card, CardContent, CardHeader, CardTitle } from '@/shared/components/ui/card';
-import { Button } from '@/shared/components/ui/button';
-import { Badge } from '@/shared/components/ui/badge';
-import { Input } from '@/shared/components/ui/input';
-import { Skeleton } from '@/shared/components/ui/skeleton';
+import { useState, useEffect } from "react";
+import { useParams, Link } from "react-router-dom";
+import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
+import { Button } from "@/shared/components/ui/button";
+import { Badge } from "@/shared/components/ui/badge";
+import { Input } from "@/shared/components/ui/input";
+import { Skeleton } from "@/shared/components/ui/skeleton";
 import {
     Select,
     SelectContent,
     SelectItem,
     SelectTrigger,
     SelectValue,
-} from '@/shared/components/ui/select';
+} from "@/shared/components/ui/select";
 import {
     Building2,
     MapPin,
@@ -31,59 +26,27 @@ import {
     Twitter,
     Facebook,
     Instagram,
-} from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
-import { apiClient } from '@/shared/services/api';
-import { PublicCandidatePageLayout } from '@/shared/components/layouts/PublicCandidatePageLayout';
-import { CandidatePageLayout } from '@/shared/components/layouts/CandidatePageLayout';
-import { useCandidateAuth } from '@/contexts/CandidateAuthContext';
-
-interface CompanyDetail {
-    id: string;
-    name: string;
-    website: string;
-    domain: string;
-    logoUrl: string | null;
-    bannerUrl: string | null;
-    about: string | null;
-    social: {
-        linkedin?: string;
-        twitter?: string;
-        facebook?: string;
-        instagram?: string;
-    } | null;
-    images: string[] | null;
-}
-
-interface CompanyJob {
-    id: string;
-    title: string;
-    department: string | null;
-    location: string | null;
-    employmentType: string | null;
-    workArrangement: string | null;
-    experienceLevel: string | null;
-    salaryMin: number | null;
-    salaryMax: number | null;
-    salaryCurrency: string | null;
-    tags: string[];
-    postedAt: string | null;
-}
+} from "lucide-react";
+import { formatDistanceToNow } from "date-fns";
+import { jobService, type ApprovedCompany, type PublicJob } from "@/shared/services/jobService";
+import { CandidatePageLayout } from "@/shared/components/layouts/CandidatePageLayout";
+import { PublicCandidatePageLayout } from "@/shared/components/layouts/PublicCandidatePageLayout";
+import { useCandidateAuth } from "@/contexts/CandidateAuthContext";
 
 export default function CompanyDetailPage() {
     const { id } = useParams<{ id: string }>();
     const { isAuthenticated } = useCandidateAuth();
 
-    const [company, setCompany] = useState<CompanyDetail | null>(null);
-    const [jobs, setJobs] = useState<CompanyJob[]>([]);
+    const [company, setCompany] = useState<ApprovedCompany | null>(null);
+    const [jobs, setJobs] = useState<PublicJob[]>([]);
     const [totalJobs, setTotalJobs] = useState(0);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     // Filters
-    const [searchQuery, setSearchQuery] = useState('');
-    const [department, setDepartment] = useState('');
-    const [location, setLocation] = useState('');
+    const [searchQuery, setSearchQuery] = useState("");
+    const [department, setDepartment] = useState("");
+    const [location, setLocation] = useState("");
     const [departments, setDepartments] = useState<string[]>([]);
     const [locations, setLocations] = useState<string[]>([]);
 
@@ -100,46 +63,54 @@ export default function CompanyDetailPage() {
         setError(null);
 
         try {
-            const params = new URLSearchParams();
-            if (searchQuery) params.append('search', searchQuery);
-            if (department) params.append('department', department);
-            if (location) params.append('location', location);
-
-            const response = await apiClient.get<{
-                company: CompanyDetail;
-                jobs: CompanyJob[];
-                totalJobs: number;
-                filters: { departments: string[]; locations: string[] };
-            }>(`/api/public/careers/companies/${id}?${params.toString()}`);
+            const response = await jobService.getPublicCompanyDetail(id, {
+                department: department || undefined,
+                location: location || undefined,
+                // search is handled client-side for now or we could add it to service if needed
+            });
 
             if (response.success && response.data) {
                 setCompany(response.data.company);
-                setJobs(response.data.jobs);
+
+                // Client-side search optimization
+                let filteredJobs = response.data.jobs;
+                if (searchQuery) {
+                    const q = searchQuery.toLowerCase();
+                    filteredJobs = filteredJobs.filter(j =>
+                        j.title.toLowerCase().includes(q) ||
+                        (j.jobSummary || "").toLowerCase().includes(q) ||
+                        j.requirements.some(r => r.toLowerCase().includes(q))
+                    );
+                }
+
+                setJobs(filteredJobs);
                 setTotalJobs(response.data.totalJobs);
                 setDepartments(response.data.filters?.departments || []);
                 setLocations(response.data.filters?.locations || []);
             } else {
-                setError('Company not found');
+                setError("Company not found");
             }
         } catch (err) {
-            console.error('Failed to load company:', err);
-            setError('Failed to load company details');
+            console.error("Failed to load company:", err);
+            setError("Failed to load company details");
         } finally {
             setIsLoading(false);
         }
     };
 
-    const formatSalary = (job: CompanyJob) => {
-        if (!job.salaryMin) return null;
-        const currency = job.salaryCurrency || 'USD';
-        const min = job.salaryMin.toLocaleString();
+    const formatSalary = (job: PublicJob) => {
+        if (!job.salaryMin && !job.salaryMax) {
+            return job.salaryDescription || "Salary not specified";
+        }
+        const currency = job.salaryCurrency || "USD";
+        const min = job.salaryMin?.toLocaleString();
         const max = job.salaryMax?.toLocaleString();
-        return `${currency} ${min}${max ? ` - ${max}` : '+'}`;
+        return `${currency} ${min}${max ? ` - ${max}` : "+"}`;
     };
 
     const formatEmploymentType = (type: string | null) => {
         if (!type) return null;
-        return type.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        return type.replace(/_/g, " ").replace(/\b\w/g, c => c.toUpperCase());
     };
 
     const Layout = isAuthenticated ? CandidatePageLayout : PublicCandidatePageLayout;
@@ -173,9 +144,9 @@ export default function CompanyDetailPage() {
                 >
                     <div className="absolute inset-0 bg-black/20" />
                     <div className="container mx-auto px-4 h-full relative">
-                        <Link to="/jobs" className="absolute top-4 left-4 text-white/80 hover:text-white flex items-center gap-2 text-sm">
+                        <Link to="/careers" className="absolute top-4 left-4 text-white/80 hover:text-white flex items-center gap-2 text-sm">
                             <ArrowLeft className="h-4 w-4" />
-                            Back to Jobs
+                            Back to Companies
                         </Link>
                     </div>
                 </div>
@@ -371,7 +342,7 @@ export default function CompanyDetailPage() {
                             {jobs.map((job) => (
                                 <Card
                                     key={job.id}
-                                    className="hover:shadow-md transition-shadow cursor-pointer group"
+                                    className="hover:shadow-md transition-shadow group overflow-hidden border-l-4 border-l-transparent hover:border-l-primary"
                                 >
                                     <Link to={`/jobs/${job.id}`}>
                                         <CardContent className="p-6">
@@ -398,10 +369,10 @@ export default function CompanyDetailPage() {
                                                                 {formatEmploymentType(job.employmentType)}
                                                             </Badge>
                                                         )}
-                                                        {job.postedAt && (
+                                                        {job.postingDate && (
                                                             <span className="flex items-center gap-1">
                                                                 <Clock className="h-3.5 w-3.5" />
-                                                                {formatDistanceToNow(new Date(job.postedAt), { addSuffix: true })}
+                                                                {formatDistanceToNow(new Date(job.postingDate), { addSuffix: true })}
                                                             </span>
                                                         )}
                                                     </div>
@@ -417,16 +388,6 @@ export default function CompanyDetailPage() {
                                                     <Button size="sm">View Details</Button>
                                                 </div>
                                             </div>
-
-                                            {job.tags && job.tags.length > 0 && (
-                                                <div className="flex flex-wrap gap-2 mt-4">
-                                                    {job.tags.slice(0, 5).map((tag) => (
-                                                        <Badge key={tag} variant="secondary" className="text-xs">
-                                                            {tag}
-                                                        </Badge>
-                                                    ))}
-                                                </div>
-                                            )}
                                         </CardContent>
                                     </Link>
                                 </Card>

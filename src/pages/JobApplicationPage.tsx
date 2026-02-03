@@ -9,13 +9,14 @@ import { useCandidateAuth } from '@/contexts/CandidateAuthContext';
 import { jobService } from '@/shared/services/jobService';
 import type { PublicJob } from '@/shared/services/jobService';
 import { applicationService } from '@/shared/services/applicationService';
-import type { CandidateResume } from '@/shared/types/resume';
+import { documentService } from '@/shared/services/documentService';
+import { DocumentSelector } from '@/shared/components/documents/DocumentSelector';
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { toast } from 'sonner';
-import { Loader2, Upload, FileText, CheckCircle2, Building2, MapPin, ArrowLeft } from 'lucide-react';
+import { Loader2, CheckCircle2, Building2, MapPin, ArrowLeft } from 'lucide-react';
 import { PublicCandidatePageLayout } from '@/shared/components/layouts/PublicCandidatePageLayout';
 import { CandidatePageLayout } from '@/shared/components/layouts/CandidatePageLayout';
 import { apiClient } from '@/shared/services/api';
@@ -29,10 +30,16 @@ export default function JobApplicationPage() {
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
 
-    const [resumes, setResumes] = useState<CandidateResume[]>([]);
-    const [selectedResumeId, setSelectedResumeId] = useState<string>('default'); // 'default', 'new', or resumeId
+    // Document selection state
+    const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
     const [resumeFile, setResumeFile] = useState<File | null>(null);
+
+    const [selectedCoverLetterId, setSelectedCoverLetterId] = useState<string | null>(null);
     const [coverLetterFile, setCoverLetterFile] = useState<File | null>(null);
+
+    const [selectedPortfolioId, setSelectedPortfolioId] = useState<string | null>(null);
+    const [portfolioFile, setPortfolioFile] = useState<File | null>(null);
+    const [portfolioUrl, setPortfolioUrl] = useState<string>('');
 
     // Form State
     const [formData, setFormData] = useState({
@@ -41,9 +48,7 @@ export default function JobApplicationPage() {
         email: '',
         phone: '',
         linkedInUrl: '',
-        portfolioUrl: '',
         websiteUrl: '',
-        coverLetterText: '',
     });
 
     useEffect(() => {
@@ -62,29 +67,10 @@ export default function JobApplicationPage() {
                 email: candidate.email || '',
                 phone: candidate.phone || '',
                 linkedInUrl: candidate.linkedInUrl || '',
-                portfolioUrl: (candidate as any).portfolioUrl || '',
                 websiteUrl: (candidate as any).websiteUrl || '',
             }));
-            fetchResumes();
         }
     }, [isAuthenticated, candidate]);
-
-    const fetchResumes = async () => {
-        try {
-            const response = await apiClient.get<CandidateResume[]>('/api/candidate/documents/resumes');
-            if (response.success && response.data) {
-                setResumes(response.data);
-                // If there's a default, set it? Or keep 'default' which maps to candidate.resumeUrl?
-                // Actually, let's look for the one matching candidate.resumeUrl or isDefault
-                const defaultResume = response.data.find(r => r.isDefault);
-                if (defaultResume) setSelectedResumeId(defaultResume.id);
-                else if (response.data.length > 0) setSelectedResumeId(response.data[0].id);
-                else setSelectedResumeId('new');
-            }
-        } catch (error) {
-            console.error('Failed to fetch resumes', error);
-        }
-    };
 
     const loadJob = async (jobId: string) => {
         setLoading(true);
@@ -110,39 +96,17 @@ export default function JobApplicationPage() {
         setFormData(prev => ({ ...prev, [name]: value }));
     };
 
-    const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'resume' | 'coverLetter') => {
-        if (e.target.files && e.target.files[0]) {
-            const file = e.target.files[0];
-            // Basic validation (size < 5MB, type PDF/DOCX)
-            if (file.size > 5 * 1024 * 1024) {
-                toast.error("File size must be less than 5MB");
-                return;
-            }
-
-            if (type === 'resume') setResumeFile(file);
-            else setCoverLetterFile(file);
-        }
-    };
-
     const uploadFile = async (file: File, type: 'resume' | 'cover_letter') => {
         const formData = new FormData();
         formData.append('file', file);
         formData.append('type', type);
 
-        // Using a generic upload endpoint - might need adjustment based on backend API
         const response = await apiClient.upload<{ url: string }>('/api/upload', formData);
 
         if (response.success && response.data?.url) {
             return response.data.url;
         }
         throw new Error('Upload failed');
-    };
-
-    const handleResumeSelect = (value: string) => {
-        setSelectedResumeId(value);
-        if (value !== 'new') {
-            setResumeFile(null);
-        }
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -155,25 +119,51 @@ export default function JobApplicationPage() {
             return;
         }
 
-        if (!resumeFile && !isAuthenticated) {
-            // Require resume for guests? Maybe optional if they have a profile?
-            // enforcing resume for now
-            toast.error("Please upload your resume");
+        if (!selectedResumeId && !resumeFile) {
+            toast.error("Please select or upload a resume");
             return;
         }
 
         setSubmitting(true);
-        try {
-            // Determine Resume URL
-            let resumeUrl = candidate?.resumeUrl;
-            let coverLetterUrl: string | undefined = undefined;
 
-            if (selectedResumeId === 'new') {
-                if (!resumeFile) {
-                    toast.error("Please upload a resume");
-                    setSubmitting(false);
-                    return;
+        // Guest Application Flow
+        if (!isAuthenticated) {
+            try {
+                const response = await applicationService.submitGuestApplication({
+                    jobId: id,
+                    firstName: formData.firstName,
+                    lastName: formData.lastName,
+                    email: formData.email,
+                    phone: formData.phone,
+                    resume: resumeFile!,
+                    cover_letter: coverLetterFile || undefined,
+                    portfolio: portfolioFile || undefined
+                });
+
+                if (response.success) {
+                    toast.success("Application submitted successfully!");
+                    toast.info("A candidate account has been created for you. Check your email for temporary login credentials.");
+                    navigate('/login');
+                } else {
+                    throw new Error(response.error || "Submission failed");
                 }
+            } catch (error: any) {
+                console.error("Guest application failed:", error);
+                toast.error(error.message || "Failed to submit application");
+            } finally {
+                setSubmitting(false);
+            }
+            return;
+        }
+
+        // Authenticated Application Flow
+        try {
+            let resumeUrl: string | undefined;
+            let coverLetterUrl: string | undefined;
+            let portfolioUrlFinal: string | undefined;
+
+            // Handle Resume
+            if (resumeFile) {
                 try {
                     resumeUrl = await uploadFile(resumeFile, 'resume');
                 } catch (err) {
@@ -182,16 +172,15 @@ export default function JobApplicationPage() {
                     setSubmitting(false);
                     return;
                 }
-            } else if (selectedResumeId !== 'default') {
-                // User picked a specific existing resume
-                const selected = resumes.find(r => r.id === selectedResumeId);
-                if (selected) {
-                    resumeUrl = selected.fileUrl;
+            } else if (selectedResumeId) {
+                const resumes = await documentService.getResumes();
+                if (resumes.success && resumes.data) {
+                    const selected = resumes.data.find(r => r.id === selectedResumeId);
+                    if (selected) resumeUrl = selected.fileUrl;
                 }
             }
-            // else if 'default', we keep candidate.resumeUrl which is already set
 
-
+            // Handle Cover Letter
             if (coverLetterFile) {
                 try {
                     coverLetterUrl = await uploadFile(coverLetterFile, 'cover_letter');
@@ -199,31 +188,48 @@ export default function JobApplicationPage() {
                     console.error(err);
                     toast.error("Failed to upload cover letter. Proceeding without it.");
                 }
+            } else if (selectedCoverLetterId) {
+                const coverLetters = await documentService.getCoverLetters();
+                if (coverLetters.success && coverLetters.data) {
+                    const selected = coverLetters.data.find(cl => cl.id === selectedCoverLetterId);
+                    if (selected && selected.fileUrl) coverLetterUrl = selected.fileUrl;
+                }
+            }
+
+            // Handle Portfolio
+            if (portfolioFile) {
+                try {
+                    const formData = new FormData();
+                    formData.append('file', portfolioFile);
+                    formData.append('type', 'portfolio');
+                    const response = await apiClient.upload<{ url: string }>('/api/upload', formData);
+                    if (response.success && response.data?.url) {
+                        portfolioUrlFinal = response.data.url;
+                    }
+                } catch (err) {
+                    console.error(err);
+                    toast.error("Failed to upload portfolio. Proceeding without it.");
+                }
+            } else if (portfolioUrl) {
+                portfolioUrlFinal = portfolioUrl;
+            } else if (selectedPortfolioId) {
+                const portfolios = await documentService.getPortfolios();
+                if (portfolios.success && portfolios.data) {
+                    const selected = portfolios.data.find(p => p.id === selectedPortfolioId);
+                    if (selected) {
+                        portfolioUrlFinal = selected.fileUrl || selected.externalUrl || undefined;
+                    }
+                }
             }
 
             const applicationData = {
                 jobId: id,
                 resumeUrl,
                 coverLetterUrl,
+                portfolioUrl: portfolioUrlFinal,
                 linkedInUrl: formData.linkedInUrl,
-                portfolioUrl: formData.portfolioUrl,
                 websiteUrl: formData.websiteUrl,
-                // If guest, backend handles creating account or linking application?
-                // Assuming current applicationService endpoint handles both or authenticated only
-                // For guest access, we might need a specific endpoint or create account first.
-                // For simplicity, let's assume authenticated for now or handling in same endpoint.
             };
-
-            // If user is not authenticated, we might need to register them first or send guest application
-            // ApplicationService.submitApplication uses /api/applications which likely requires Auth
-
-            if (!isAuthenticated) {
-                // Redirect to register/login with intent
-                // Or separate guest application flow
-                toast.info("Guest application support coming soon. Please sign in to apply.");
-                navigate('/login', { state: { returnTo: `/jobs/${id}/apply` } });
-                return;
-            }
 
             const response = await applicationService.submitApplication(applicationData);
 
@@ -302,99 +308,76 @@ export default function JobApplicationPage() {
                             <CardDescription>Upload your resume and any supporting documents.</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-6">
-                            <div className="space-y-4">
-                                <Label>Select Resume *</Label>
-                                {resumes.length > 0 ? (
-                                    <div className="grid gap-3">
-                                        {resumes.map(resume => (
-                                            <div
-                                                key={resume.id}
-                                                className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${selectedResumeId === resume.id ? 'border-primary bg-primary/5' : 'hover:bg-muted'}`}
-                                                onClick={() => handleResumeSelect(resume.id)}
-                                            >
-                                                <div className="flex items-center gap-3">
-                                                    <FileText className="h-5 w-5 text-primary" />
-                                                    <div>
-                                                        <p className="font-medium text-sm">{resume.fileName}</p>
-                                                        <p className="text-xs text-muted-foreground">{new Date(resume.uploadedAt).toLocaleDateString()} {resume.isDefault && '(Default)'}</p>
-                                                    </div>
-                                                </div>
-                                                {selectedResumeId === resume.id && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                                            </div>
-                                        ))}
-
-                                        <div
-                                            className={`flex items-center justify-between p-3 border rounded-lg cursor-pointer transition-colors ${selectedResumeId === 'new' ? 'border-primary bg-primary/5' : 'hover:bg-muted'}`}
-                                            onClick={() => handleResumeSelect('new')}
-                                        >
-                                            <div className="flex items-center gap-3">
-                                                <Upload className="h-5 w-5 text-muted-foreground" />
-                                                <span className="font-medium text-sm">Upload New Resume</span>
-                                            </div>
-                                            {selectedResumeId === 'new' && <CheckCircle2 className="h-4 w-4 text-primary" />}
-                                        </div>
-                                    </div>
-                                ) : (
-                                    // No existing resumes? Force upload (logic handled by default 'new' or 'default' with no matches defaulting to UI below)
-                                    // Actually, if list empty, we just show upload.
-                                    // But typically we show the upload box if 'new' is selected or list is empty.
-                                    null
-                                )}
-
-                                {(selectedResumeId === 'new' || resumes.length === 0) && (
-                                    <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer relative mt-2">
-                                        <input
-                                            type="file"
-                                            id="resume"
-                                            accept=".pdf,.doc,.docx"
-                                            className="absolute inset-0 opacity-0 cursor-pointer"
-                                            onChange={(e) => {
-                                                handleFileChange(e, 'resume');
-                                                setSelectedResumeId('new');
-                                            }}
-                                        />
-                                        {resumeFile ? (
-                                            <div className="flex flex-col items-center text-primary">
-                                                <FileText className="h-8 w-8 mb-2" />
-                                                <span className="font-medium text-sm">{resumeFile.name}</span>
-                                                <span className="text-xs text-muted-foreground mt-1">Click to change</span>
-                                            </div>
-                                        ) : (
-                                            <div className="flex flex-col items-center text-muted-foreground">
-                                                <Upload className="h-8 w-8 mb-2" />
-                                                <span className="font-medium text-sm">Click to upload resume</span>
-                                                <span className="text-xs mt-1">PDF, DOCX up to 5MB</span>
-                                            </div>
-                                        )}
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="coverLetter">Cover Letter (Optional)</Label>
-                                <div className="border-2 border-dashed rounded-lg p-6 flex flex-col items-center justify-center bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer relative">
-                                    <input
-                                        type="file"
-                                        id="coverLetter"
-                                        accept=".pdf,.doc,.docx"
-                                        className="absolute inset-0 opacity-0 cursor-pointer"
-                                        onChange={(e) => handleFileChange(e, 'coverLetter')}
+                            {isAuthenticated ? (
+                                <>
+                                    <DocumentSelector
+                                        type="resume"
+                                        required
+                                        selectedId={selectedResumeId}
+                                        onSelect={(id, file) => {
+                                            setSelectedResumeId(id);
+                                            if (file) setResumeFile(file);
+                                        }}
                                     />
-                                    {coverLetterFile ? (
-                                        <div className="flex flex-col items-center text-primary">
-                                            <FileText className="h-8 w-8 mb-2" />
-                                            <span className="font-medium text-sm">{coverLetterFile.name}</span>
-                                            <span className="text-xs text-muted-foreground mt-1">Click to change</span>
-                                        </div>
-                                    ) : (
-                                        <div className="flex flex-col items-center text-muted-foreground">
-                                            <Upload className="h-8 w-8 mb-2" />
-                                            <span className="font-medium text-sm">Click to upload cover letter</span>
-                                            <span className="text-xs mt-1">PDF, DOCX up to 5MB</span>
-                                        </div>
-                                    )}
+
+                                    <DocumentSelector
+                                        type="cover-letter"
+                                        selectedId={selectedCoverLetterId}
+                                        onSelect={(id, file) => {
+                                            setSelectedCoverLetterId(id);
+                                            if (file) setCoverLetterFile(file);
+                                        }}
+                                        description="Optional, but recommended"
+                                    />
+
+                                    <DocumentSelector
+                                        type="portfolio"
+                                        selectedId={selectedPortfolioId}
+                                        onSelect={(id, file, url) => {
+                                            setSelectedPortfolioId(id);
+                                            if (file) setPortfolioFile(file);
+                                            if (url) setPortfolioUrl(url);
+                                        }}
+                                        description="Share your work samples or project links"
+                                    />
+                                </>
+                            ) : (
+                                <div className="space-y-6">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="resume-upload">Resume *</Label>
+                                        <Input
+                                            id="resume-upload"
+                                            type="file"
+                                            accept=".pdf,.doc,.docx"
+                                            onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
+                                            required
+                                        />
+                                        <p className="text-xs text-muted-foreground">PDF or Word document up to 5MB</p>
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="cl-upload">Cover Letter (Optional)</Label>
+                                        <Input
+                                            id="cl-upload"
+                                            type="file"
+                                            accept=".pdf,.doc,.docx"
+                                            onChange={(e) => setCoverLetterFile(e.target.files?.[0] || null)}
+                                        />
+                                    </div>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="portfolio-upload">Portfolio (Optional)</Label>
+                                        <Input
+                                            id="portfolio-upload"
+                                            type="file"
+                                            accept=".pdf,.doc,.docx,.jpg,.png"
+                                            onChange={(e) => setPortfolioFile(e.target.files?.[0] || null)}
+                                        />
+                                    </div>
+                                    <div className="p-4 bg-muted/50 rounded-lg border border-dashed text-sm">
+                                        <p className="font-medium mb-1">Applying as a Guest</p>
+                                        <p className="text-muted-foreground">An account will be created automatically for you using your email address so you can track your application status. Temporary login credentials will be sent to your email.</p>
+                                    </div>
                                 </div>
-                            </div>
+                            )}
                         </CardContent>
                     </Card>
 
@@ -407,10 +390,6 @@ export default function JobApplicationPage() {
                             <div className="space-y-2">
                                 <Label htmlFor="linkedInUrl">LinkedIn Profile URL</Label>
                                 <Input id="linkedInUrl" name="linkedInUrl" value={formData.linkedInUrl} onChange={handleInputChange} placeholder="https://linkedin.com/in/..." />
-                            </div>
-                            <div className="space-y-2">
-                                <Label htmlFor="portfolioUrl">Portfolio URL</Label>
-                                <Input id="portfolioUrl" name="portfolioUrl" value={formData.portfolioUrl} onChange={handleInputChange} placeholder="https://..." />
                             </div>
                             <div className="space-y-2">
                                 <Label htmlFor="websiteUrl">Personal Website</Label>
