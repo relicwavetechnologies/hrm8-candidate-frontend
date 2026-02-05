@@ -63,7 +63,7 @@ export const notificationService = {
             queryParams.set('types', params.types.join(','));
         }
 
-        const url = `/api/notifications${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
+        const url = `/api/candidate/notifications${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
         return apiClient.get<NotificationsResponse>(url);
     },
 
@@ -71,27 +71,27 @@ export const notificationService = {
      * Get unread notification count
      */
     async getUnreadCount(): Promise<{ success: boolean; data?: UnreadCountResponse; error?: string }> {
-        return apiClient.get<UnreadCountResponse>('/api/notifications/count');
+        return apiClient.get<UnreadCountResponse>('/api/candidate/notifications/count');
     },
 
     /**
      * Mark a notification as read
      */
     async markAsRead(notificationId: string): Promise<{ success: boolean; data?: Notification; error?: string }> {
-        return apiClient.patch<Notification>(`/api/notifications/${notificationId}/read`);
+        return apiClient.patch<Notification>(`/api/candidate/notifications/${notificationId}/read`);
     },
 
     /**
      * Mark all notifications as read
      */
     async markAllAsRead(): Promise<{ success: boolean; data?: { count: number }; error?: string }> {
-        return apiClient.patch<{ count: number }>('/api/notifications/read-all');
+        return apiClient.patch<{ count: number }>('/api/candidate/notifications/read-all');
     },
 
     /**
      * Delete a notification
      */
     async deleteNotification(notificationId: string): Promise<{ success: boolean; error?: string }> {
-        return apiClient.delete(`/api/notifications/${notificationId}`);
+        return apiClient.delete(`/api/candidate/notifications/${notificationId}`);
     },
 };
