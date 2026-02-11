@@ -103,7 +103,7 @@ class ApplicationService {
   }
 
   async getCandidateApplications() {
-    return apiClient.get<{ applications: Application[] }>('/api/applications');
+    return apiClient.get<{ applications: Application[] }>('/api/candidate/applications');
   }
 
   async getJobApplications(
