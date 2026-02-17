@@ -34,9 +34,8 @@ interface WebSocketProviderProps {
 }
 
 // WebSocket URL construction
-// WebSocket URL construction
 const getWebSocketUrl = (): string => {
-  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
   // Use the URL API to safely replace protocol and path
   try {
     const url = new URL(apiUrl);
@@ -44,8 +43,8 @@ const getWebSocketUrl = (): string => {
     url.pathname = '/ws'; // Always connect to /ws endpoint
     return url.toString();
   } catch (e) {
-    // Fallback in case of error, ensuring we point to backend port 3000 by default
-    return 'ws://localhost:3000/ws';
+    // Fallback in case URL parsing fails
+    return `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
   }
 };
 
@@ -430,4 +429,3 @@ export function useWebSocket() {
   }
   return context;
 }
-
