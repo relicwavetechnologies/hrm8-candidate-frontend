@@ -21,6 +21,40 @@ interface CandidateAuthContextType {
 
 const CandidateAuthContext = createContext<CandidateAuthContextType | undefined>(undefined);
 
+// Normalize the backend response (snake_case DB columns) to camelCase Candidate type
+function normalizeCandidate(raw: any): Candidate {
+  return {
+    id: raw.id,
+    email: raw.email,
+    firstName: raw.firstName ?? raw.first_name ?? '',
+    lastName: raw.lastName ?? raw.last_name ?? '',
+    phone: raw.phone,
+    photo: raw.photo,
+    linkedInUrl: raw.linkedInUrl ?? raw.linkedin_url,
+    city: raw.city,
+    state: raw.state,
+    country: raw.country,
+    emailVerified: raw.emailVerified ?? raw.email_verified ?? false,
+    status: raw.status,
+    visaStatus: raw.visaStatus ?? raw.visa_status,
+    workEligibility: raw.workEligibility ?? raw.work_eligibility,
+    requiresSponsorship: raw.requiresSponsorship ?? raw.requires_sponsorship,
+    jobTypePreference: raw.jobTypePreference ?? raw.job_type_preference,
+    expectedSalaryMin: raw.expectedSalaryMin ?? raw.expected_salary_min,
+    expectedSalaryMax: raw.expectedSalaryMax ?? raw.expected_salary_max,
+    salaryCurrency: raw.salaryCurrency ?? raw.salary_currency,
+    salaryPreference: raw.salaryPreference ?? raw.salary_preference,
+    relocationWilling: raw.relocationWilling ?? raw.relocation_willing,
+    preferredLocations: raw.preferredLocations ?? raw.preferred_locations,
+    remotePreference: raw.remotePreference ?? raw.remote_preference,
+    resumeUrl: raw.resumeUrl ?? raw.resume_url,
+    profileVisibility: raw.profileVisibility ?? raw.profile_visibility,
+    showContactInfo: raw.showContactInfo ?? raw.show_contact_info,
+    showSalaryExpectations: raw.showSalaryExpectations ?? raw.show_salary_expectations,
+    allowRecruiterContact: raw.allowRecruiterContact ?? raw.allow_recruiter_contact,
+  };
+}
+
 export function CandidateAuthProvider({ children }: { children: ReactNode }) {
   const [candidate, setCandidate] = useState<Candidate | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -36,7 +70,7 @@ export function CandidateAuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await candidateAuthService.getCurrentCandidate();
       if (response.data?.candidate) {
-        setCandidate(response.data.candidate);
+        setCandidate(normalizeCandidate(response.data.candidate));
       } else {
         setCandidate(null);
       }
@@ -64,10 +98,11 @@ export function CandidateAuthProvider({ children }: { children: ReactNode }) {
       }
 
       if (response.data?.candidate) {
-        setCandidate(response.data.candidate);
+        const normalized = normalizeCandidate(response.data.candidate);
+        setCandidate(normalized);
         toast({
           title: 'Welcome back!',
-          description: `Logged in as ${response.data.candidate.firstName} ${response.data.candidate.lastName}`,
+          description: `Logged in as ${normalized.firstName} ${normalized.lastName}`,
         });
         navigate('/candidate/dashboard');
         return { success: true };
@@ -135,7 +170,7 @@ export function CandidateAuthProvider({ children }: { children: ReactNode }) {
     try {
       const response = await candidateAuthService.getCurrentCandidate();
       if (response.data?.candidate) {
-        setCandidate(response.data.candidate);
+        setCandidate(normalizeCandidate(response.data.candidate));
       } else {
         setCandidate(null);
       }

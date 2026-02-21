@@ -41,39 +41,39 @@ const getNotificationIcon = (type: string) => {
         case 'APPLICATION_STATUS_CHANGED':
         case 'APPLICATION_SHORTLISTED':
         case 'APPLICATION_REJECTED':
-            return <Users className="h-4 w-4 text-blue-500" />;
+            return <Users className="h-4 w-4 text-primary" />;
         case 'JOB_CREATED':
         case 'JOB_STATUS_CHANGED':
         case 'JOB_ASSIGNED':
         case 'JOB_FILLED':
         case 'JOB_ASSIGNMENT_RECEIVED':
-            return <Briefcase className="h-4 w-4 text-green-500" />;
+            return <Briefcase className="h-4 w-4 text-success" />;
         case 'INTERVIEW_SCHEDULED':
         case 'CANDIDATE_STAGE_CHANGED':
         case 'OFFER_EXTENDED':
-            return <Calendar className="h-4 w-4 text-purple-500" />;
+            return <Calendar className="h-4 w-4 text-purple" />;
         case 'NEW_LEAD':
         case 'LEAD_CONVERSION_REQUESTED':
-            return <UserPlus className="h-4 w-4 text-blue-500" />;
+            return <UserPlus className="h-4 w-4 text-primary" />;
         case 'LEAD_CONVERSION_DECLINED':
-            return <XCircle className="h-4 w-4 text-red-500" />;
+            return <XCircle className="h-4 w-4 text-destructive" />;
         case 'LEAD_CONVERTED':
-            return <TrendingUp className="h-4 w-4 text-indigo-600" />;
+            return <TrendingUp className="h-4 w-4 text-primary" />;
         case 'COMMISSION_EARNED':
-            return <Coins className="h-4 w-4 text-green-500" />;
+            return <Coins className="h-4 w-4 text-success" />;
         case 'WITHDRAWAL_APPROVED':
-            return <CheckCircle2 className="h-4 w-4 text-green-600" />;
+            return <CheckCircle2 className="h-4 w-4 text-success" />;
         case 'WITHDRAWAL_REJECTED':
-            return <XCircle className="h-4 w-4 text-red-500" />;
+            return <XCircle className="h-4 w-4 text-destructive" />;
         case 'SUBSCRIPTION_RENEWAL_FAILED':
         case 'LOW_BALANCE_WARNING':
-            return <AlertTriangle className="h-4 w-4 text-red-600" />;
+            return <AlertTriangle className="h-4 w-4 text-destructive" />;
         case 'SUBSCRIPTION_PURCHASED':
         case 'SERVICE_PURCHASED':
-            return <AlertCircle className="h-4 w-4 text-yellow-500" />;
+            return <AlertCircle className="h-4 w-4 text-warning" />;
         case 'SYSTEM_ANNOUNCEMENT':
         default:
-            return <Bell className="h-4 w-4 text-gray-500" />;
+            return <Bell className="h-4 w-4 text-muted-foreground" />;
     }
 };
 

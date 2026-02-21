@@ -114,13 +114,13 @@ export default function AssessmentListPage() {
                       <span>Invited: {format(new Date(assessment.invitedAt), "MMM d, yyyy")}</span>
                     </div>
                     {assessment.expiryDate && (
-                      <div className="flex items-center text-red-600">
+                      <div className="flex items-center text-destructive">
                         <AlertCircle className="mr-2 h-4 w-4" />
                         <span>Due: {format(new Date(assessment.expiryDate), "MMM d, yyyy")}</span>
                       </div>
                     )}
                     {assessment.completedAt && (
-                      <div className="flex items-center text-green-600">
+                      <div className="flex items-center text-success">
                         <CheckCircle className="mr-2 h-4 w-4" />
                         <span>Completed: {format(new Date(assessment.completedAt), "MMM d, yyyy")}</span>
                       </div>
