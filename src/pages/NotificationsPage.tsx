@@ -298,26 +298,26 @@ export default function NotificationsPage() {
         switch (type) {
             case 'JOB_ALERT':
             case 'JOB_MATCH':
-                return <Briefcase className="h-5 w-5 text-blue-500" />;
+                return <Briefcase className="h-5 w-5 text-primary" />;
             case 'APPLICATION_RECEIVED':
             case 'APPLICATION_UPDATE':
             case 'APPLICATION_STATUS_UPDATED':
-                return <Bell className="h-5 w-5 text-purple-500" />;
+                return <Bell className="h-5 w-5 text-purple" />;
             case 'INTERVIEW_SCHEDULED':
             case 'INTERVIEW_RESCHEDULED':
             case 'INTERVIEW_REMINDER':
-                return <Calendar className="h-5 w-5 text-blue-500" />;
+                return <Calendar className="h-5 w-5 text-primary" />;
             case 'INTERVIEW_CANCELLED':
-                return <Calendar className="h-5 w-5 text-red-500" />;
+                return <Calendar className="h-5 w-5 text-destructive" />;
             case 'OFFER_SENT':
             case 'OFFER_ACCEPTED':
             case 'OFFER_DECLINED':
-                return <FileText className="h-5 w-5 text-blue-600" />;
+                return <FileText className="h-5 w-5 text-primary" />;
             case 'MESSAGE':
             case 'MESSAGE_RECEIVED':
-                return <Mail className="h-5 w-5 text-orange-500" />;
+                return <Mail className="h-5 w-5 text-orange" />;
             case 'SYSTEM':
-                return <Info className="h-5 w-5 text-gray-500" />;
+                return <Info className="h-5 w-5 text-muted-foreground" />;
             default:
                 return <Bell className="h-5 w-5" />;
         }

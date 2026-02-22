@@ -24,8 +24,8 @@ export default function ApplicationConfirmationPage() {
                     <Card className="w-full max-w-2xl">
                         <CardHeader className="text-center">
                             <div className="flex justify-center mb-4">
-                                <div className="rounded-full bg-green-100 dark:bg-green-900 p-4">
-                                    <CheckCircle2 className="h-12 w-12 text-green-600 dark:text-green-400" />
+                                <div className="rounded-full bg-success/10 p-4">
+                                    <CheckCircle2 className="h-12 w-12 text-success" />
                                 </div>
                             </div>
                             <CardTitle className="text-3xl">Application Submitted!</CardTitle>

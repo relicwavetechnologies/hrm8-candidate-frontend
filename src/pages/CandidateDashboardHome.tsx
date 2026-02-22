@@ -263,7 +263,7 @@ export default function CandidateDashboardHome() {
                             <p className="text-xs text-muted-foreground font-semibold">{job.company?.name || 'Company'}</p>
                           </div>
                           {job.matchScore && (
-                            <Badge variant="secondary" className="h-5 px-2 text-[10px] font-bold rounded-full bg-emerald-50 text-emerald-700 border-none shrink-0">
+                            <Badge variant="secondary" className="h-5 px-2 text-[10px] font-bold rounded-full bg-success/10 text-success border-none shrink-0">
                               {Math.round(job.matchScore)}% Match
                             </Badge>
                           )}
@@ -315,7 +315,7 @@ export default function CandidateDashboardHome() {
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
-                              {!notification.read && <div className="h-2 w-2 rounded-full bg-blue-500 shrink-0" />}
+                              {!notification.read && <div className="h-2 w-2 rounded-full bg-primary shrink-0" />}
                               <p className={`text-sm ${!notification.read ? 'font-bold' : 'font-semibold text-muted-foreground'} truncate`}>
                                 {notification.title}
                               </p>
