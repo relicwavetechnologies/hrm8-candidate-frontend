@@ -10,6 +10,8 @@ import { Paperclip, Send } from 'lucide-react';
 import { useWebSocket } from '@/contexts/WebSocketContext';
 import { cn } from '@/shared/lib/utils';
 import { apiClient } from '@/shared/services/api';
+import { messagingService } from '@/shared/services/messagingService';
+import { toast } from '@/shared/hooks/use-toast';
 
 interface MessageInputProps {
   conversationId: string;
@@ -28,21 +30,42 @@ export function MessageInput({
 }: MessageInputProps) {
   const [message, setMessage] = useState('');
   const [uploading, setUploading] = useState(false);
+  const [sending, setSending] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
-  const { sendMessage, isConnected, connectionState } = useWebSocket();
+  const { sendMessage, isConnected, connectionState, addMessage } = useWebSocket();
 
   const isArchivedOrClosed = conversationStatus === 'ARCHIVED' || conversationStatus === 'CLOSED';
-  const isInputDisabled = disabled || !isConnected || isArchivedOrClosed;
+  const isInputDisabled = disabled || isArchivedOrClosed || sending;
 
-  const handleSend = () => {
-    if (!message.trim() || !isConnected || disabled || isArchivedOrClosed) return;
+  const handleSend = async () => {
+    if (!message.trim() || disabled || isArchivedOrClosed || sending) return;
+    const content = message.trim();
+    setSending(true);
 
-    sendMessage('send_message', {
-      conversationId,
-      content: message.trim(),
-    });
+    try {
+      if (isConnected) {
+        sendMessage('send_message', {
+          conversationId,
+          content,
+        });
+      } else {
+        const response = await messagingService.sendMessage(conversationId, content, 'TEXT');
+        if (response.success && response.data) {
+          addMessage(conversationId, response.data);
+        } else {
+          toast({
+            title: 'Message not sent',
+            description: response.error || 'Failed to send message.',
+            variant: 'destructive',
+          });
+          return;
+        }
+      }
 
-    setMessage('');
+      setMessage('');
+    } finally {
+      setSending(false);
+    }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -56,10 +79,23 @@ export function MessageInput({
       formData.append('conversationId', conversationId);
       const uploadRes = await apiClient.upload<{ url: string }>('/api/upload', formData);
       if (uploadRes.success && uploadRes.data?.url) {
-        sendMessage('send_message', {
-          conversationId,
-          content: uploadRes.data.url,
-        });
+        if (isConnected) {
+          sendMessage('send_message', {
+            conversationId,
+            content: uploadRes.data.url,
+          });
+        } else {
+          const response = await messagingService.sendMessage(conversationId, uploadRes.data.url, 'FILE');
+          if (response.success && response.data) {
+            addMessage(conversationId, response.data);
+          } else {
+            toast({
+              title: 'File message not sent',
+              description: response.error || 'Failed to send file message.',
+              variant: 'destructive',
+            });
+          }
+        }
       }
     } catch (error) {
       console.error('File upload failed', error);
@@ -76,7 +112,7 @@ export function MessageInput({
     }
   };
 
-  const isDisabled = disabled || !isConnected || (!message.trim() && !uploading);
+  const isDisabled = disabled || sending || (!message.trim() && !uploading);
 
   return (
     <div className={cn('flex flex-col gap-2 p-4 pt-2 border-t bg-background/95 backdrop-blur-md', className)}>
@@ -107,15 +143,15 @@ export function MessageInput({
           placeholder={
             isArchivedOrClosed
               ? `Conversation is ${conversationStatus.toLowerCase()}.`
-              : isConnected
-                ? 'Message...'
-                : connectionState === 'connecting'
-                  ? 'Connecting...'
+                : isConnected
+                  ? 'Message...'
+                  : connectionState === 'connecting'
+                    ? 'Connecting...'
                   : connectionState === 'reconnecting'
                     ? 'Reconnecting...'
                     : connectionState === 'error'
-                      ? 'Connection Error'
-                      : 'Offline'
+                      ? 'Realtime unavailable (message will still send)'
+                      : 'Offline (message will still send)'
           }
           disabled={isInputDisabled}
           rows={1}
@@ -143,7 +179,6 @@ export function MessageInput({
     </div>
   );
 }
-
 
 
 

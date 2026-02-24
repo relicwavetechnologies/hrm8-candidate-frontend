@@ -4,6 +4,7 @@
  */
 
 import { apiClient } from '@/shared/services/api';
+import { normalizeNotification } from '@/shared/lib/notification-routing';
 
 export interface Notification {
     id: string;
@@ -21,6 +22,17 @@ export interface Notification {
     companyId?: string;
     leadId?: string;
     regionId?: string;
+}
+
+interface RawNotification extends Partial<Notification> {
+    action_url?: string;
+    created_at?: string;
+    read_at?: string;
+    job_id?: string;
+    application_id?: string;
+    company_id?: string;
+    lead_id?: string;
+    region_id?: string;
 }
 
 export interface NotificationsResponse {
@@ -64,7 +76,25 @@ export const notificationService = {
         }
 
         const url = `/api/candidate/notifications${queryParams.toString() ? `?${queryParams.toString()}` : ''}`;
-        return apiClient.get<NotificationsResponse>(url);
+        const response = await apiClient.get<NotificationsResponse>(url);
+
+        if (!response.success || !response.data) {
+            return response;
+        }
+
+        const notificationsRaw = Array.isArray(response.data.notifications) ? response.data.notifications : [];
+        const normalized = notificationsRaw.map((notification) =>
+            normalizeNotification(notification as RawNotification)
+        );
+
+        return {
+            success: true,
+            data: {
+                notifications: normalized,
+                total: Number(response.data.total || 0),
+                unreadCount: Number(response.data.unreadCount || 0),
+            },
+        };
     },
 
     /**
@@ -78,7 +108,20 @@ export const notificationService = {
      * Mark a notification as read
      */
     async markAsRead(notificationId: string): Promise<{ success: boolean; data?: Notification; error?: string }> {
-        return apiClient.patch<Notification>(`/api/candidate/notifications/${notificationId}/read`);
+        const response = await apiClient.patch<Notification | { notification?: RawNotification }>(
+            `/api/candidate/notifications/${notificationId}/read`
+        );
+
+        if (!response.success || !response.data) {
+            return { success: response.success, error: response.error };
+        }
+
+        const wrapped = response.data as { notification?: RawNotification };
+        const rawNotification = wrapped.notification || (response.data as RawNotification);
+        return {
+            success: true,
+            data: normalizeNotification(rawNotification),
+        };
     },
 
     /**

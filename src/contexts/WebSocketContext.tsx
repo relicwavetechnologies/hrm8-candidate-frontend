@@ -33,19 +33,28 @@ interface WebSocketProviderProps {
   userEmail?: string;
 }
 
-// WebSocket URL construction
-const getWebSocketUrl = (): string => {
-  const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
-  // Use the URL API to safely replace protocol and path
+// Build one WS URL from an HTTP(S) origin/base
+const buildWebSocketUrl = (baseUrl: string): string => {
   try {
-    const url = new URL(apiUrl);
+    const url = new URL(baseUrl);
     url.protocol = url.protocol.replace('http', 'ws');
-    url.pathname = '/ws'; // Always connect to /ws endpoint
+    url.pathname = '/ws';
     return url.toString();
-  } catch (e) {
-    // Fallback in case URL parsing fails
+  } catch {
     return `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/ws`;
   }
+};
+
+// Build WS URL candidates in order:
+// 1) API host (from env), 2) current app host.
+const getWebSocketUrls = (): string[] => {
+  const candidates = [
+    import.meta.env.VITE_API_URL,
+    window.location.origin,
+  ].filter(Boolean) as string[];
+
+  const urls = candidates.map(buildWebSocketUrl);
+  return Array.from(new Set(urls));
 };
 
 // Exponential backoff configuration
@@ -69,6 +78,7 @@ export function WebSocketProvider({
   const [currentConversationId, setCurrentConversationId] = useState<
     string | null
   >(null);
+  const authFailureNotifiedRef = useRef(false);
 
   const currentConversationIdRef = useRef<string | null>(null);
 
@@ -76,6 +86,8 @@ export function WebSocketProvider({
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const reconnectAttemptRef = useRef(0);
   const shouldReconnectRef = useRef(true);
+  const wsUrlsRef = useRef<string[]>(getWebSocketUrls());
+  const wsUrlIndexRef = useRef(0);
   const messageHandlersRef = useRef<
     Map<string, (payload: any) => void>
   >(new Map());
@@ -192,6 +204,38 @@ export function WebSocketProvider({
         case 'error':
           console.error('❌ WebSocket error:', message.payload);
           const errorPayload = message.payload as any;
+
+          if (errorPayload?.message === 'Authentication failed') {
+            const hasAlternativeUrl = wsUrlIndexRef.current < wsUrlsRef.current.length - 1;
+
+            if (hasAlternativeUrl) {
+              // Try next WS host candidate before giving up.
+              wsUrlIndexRef.current += 1;
+              reconnectAttemptRef.current = 0;
+              shouldReconnectRef.current = true;
+              if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+                wsRef.current.close();
+              }
+              break;
+            }
+
+            // No alternative host worked: stop reconnect storm.
+            shouldReconnectRef.current = false;
+            setConnectionState('error');
+            if (!authFailureNotifiedRef.current) {
+              authFailureNotifiedRef.current = true;
+              toast({
+                title: 'Realtime chat unavailable',
+                description: 'Using API fallback for chat. You can still view and send messages.',
+                variant: 'destructive',
+              });
+            }
+            if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+              wsRef.current.close();
+            }
+            break;
+          }
+
           // Show toast notification for messaging restriction errors
           if (errorPayload?.code === 4010 || errorPayload?.code === 4011) {
             toast({
@@ -245,7 +289,8 @@ export function WebSocketProvider({
     }
 
     try {
-      const wsUrl = getWebSocketUrl();
+      const wsUrl =
+        wsUrlsRef.current[wsUrlIndexRef.current] || wsUrlsRef.current[0] || buildWebSocketUrl(window.location.origin);
       console.log('🔌 Connecting to WebSocket:', wsUrl);
       setConnectionState('connecting');
 
@@ -253,6 +298,7 @@ export function WebSocketProvider({
       // No need to manually set credentials - browser handles it
       const ws = new WebSocket(wsUrl);
       wsRef.current = ws;
+      authFailureNotifiedRef.current = false;
 
       ws.onopen = () => {
         console.log('✅ WebSocket opened');
@@ -373,6 +419,8 @@ export function WebSocketProvider({
   // Connect/disconnect based on authentication state
   useEffect(() => {
     if (isAuthenticated) {
+      wsUrlsRef.current = getWebSocketUrls();
+      wsUrlIndexRef.current = 0;
       shouldReconnectRef.current = true;
       connect();
     } else {

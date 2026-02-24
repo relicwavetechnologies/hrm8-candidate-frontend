@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import type { Application } from '@/shared/services/applicationService';
 import { apiClient } from '@/shared/services/api';
 import { CandidatePageLayout } from '@/shared/components/layouts/CandidatePageLayout';
@@ -34,15 +34,33 @@ interface TimelineStep {
     description?: string;
 }
 
+type ApplicationDetailsTab = 'details' | 'interviews' | 'documents';
+
+const resolveInitialTab = (tabParam: string | null): ApplicationDetailsTab => {
+    if (tabParam === 'interviews' || tabParam === 'documents') {
+        return tabParam;
+    }
+    return 'details';
+};
+
 export default function ApplicationTrackingPage() {
     const { id } = useParams();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
     const [application, setApplication] = useState<Application | null>(null);
     const [job, setJob] = useState<any>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [activeTab, setActiveTab] = useState('timeline');
+    const [activeTab, setActiveTab] = useState<ApplicationDetailsTab>(() =>
+        resolveInitialTab(searchParams.get('tab'))
+    );
     const [interviews, setInterviews] = useState<any[]>([]);
+
+    const handleTabChange = (value: string) => {
+        if (value === 'details' || value === 'interviews' || value === 'documents') {
+            setActiveTab(value);
+        }
+    };
 
     useEffect(() => {
         if (id) {
@@ -51,6 +69,11 @@ export default function ApplicationTrackingPage() {
             return () => clearInterval(interval);
         }
     }, [id]);
+
+    useEffect(() => {
+        const nextTab = resolveInitialTab(searchParams.get('tab'));
+        setActiveTab((prevTab) => (prevTab === nextTab ? prevTab : nextTab));
+    }, [searchParams]);
 
     const loadApplicationDetails = async () => {
         if (!id) return;
@@ -264,7 +287,7 @@ export default function ApplicationTrackingPage() {
                 </Card>
 
                 {/* Tabs for Details */}
-                <Tabs defaultValue="details" value={activeTab} onValueChange={setActiveTab}>
+                <Tabs value={activeTab} onValueChange={handleTabChange}>
                     <TabsList>
                         <TabsTrigger value="details">Information</TabsTrigger>
                         <TabsTrigger value="interviews">Interviews {interviews.length > 0 && `(${interviews.length})`}</TabsTrigger>

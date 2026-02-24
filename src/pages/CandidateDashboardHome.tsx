@@ -8,6 +8,8 @@ import { useNavigate } from 'react-router-dom';
 import { useCandidateAuth } from '@/contexts/CandidateAuthContext';
 import { applicationService } from '@/shared/services/applicationService';
 import type { Application } from '@/shared/services/applicationService';
+import { notificationService, type Notification } from '@/shared/services/notificationService';
+import { resolveCandidateNotificationTarget } from '@/shared/lib/notification-routing';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
@@ -21,24 +23,17 @@ import {
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/shared/components/ui/dialog';
+import { useToast } from '@/shared/hooks/use-toast';
 
 export default function CandidateDashboardHome() {
   const { candidate } = useCandidateAuth();
   const navigate = useNavigate();
   const [recentApplications, setRecentApplications] = useState<Application[]>([]);
-  const [notifications, setNotifications] = useState<any[]>([]);
-  const [selectedNotification, setSelectedNotification] = useState<any>(null);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const [profileCompleteness, setProfileCompleteness] = useState(0);
   const [recommendedJobs, setRecommendedJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadRecentApplications();
@@ -75,8 +70,7 @@ export default function CandidateDashboardHome() {
 
   const loadNotifications = async () => {
     try {
-      const { apiClient } = await import('@/shared/services/api');
-      const response = await apiClient.get<{ notifications: any[]; total: number; unreadCount: number }>('/api/candidate/notifications?limit=5');
+      const response = await notificationService.getNotifications({ limit: 5 });
       if (response.success && response.data) {
         setNotifications(response.data.notifications || []);
       }
@@ -84,6 +78,28 @@ export default function CandidateDashboardHome() {
       console.error('Failed to load notifications:', error);
       setNotifications([]);
     }
+  };
+
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.read) {
+      try {
+        await notificationService.markAsRead(notification.id);
+      } catch (error) {
+        console.error('Failed to mark dashboard notification as read:', error);
+      }
+    }
+
+    const target = resolveCandidateNotificationTarget(notification);
+    if (target) {
+      navigate(target);
+      return;
+    }
+
+    navigate('/candidate/notifications');
+    toast({
+      title: 'Notification opened',
+      description: 'Unable to resolve a direct destination for this notification.',
+    });
   };
 
   const calculateProfileCompleteness = () => {
@@ -311,7 +327,7 @@ export default function CandidateDashboardHome() {
                         <div
                           key={notification.id}
                           className="flex flex-col gap-1 p-4 hover:bg-muted/30 transition-all duration-200 cursor-pointer"
-                          onClick={() => setSelectedNotification(notification)}
+                          onClick={() => void handleNotificationClick(notification)}
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="flex items-center gap-2 min-w-0">
@@ -348,46 +364,6 @@ export default function CandidateDashboardHome() {
             </Card>
           </div>
         </div>
-
-        <Dialog open={!!selectedNotification} onOpenChange={(open) => !open && setSelectedNotification(null)}>
-          <DialogContent className="sm:max-w-md">
-            <DialogHeader>
-              <DialogTitle className="flex items-center gap-2">
-                {selectedNotification?.title}
-              </DialogTitle>
-              <DialogDescription>
-                {selectedNotification?.createdAt && !isNaN(new Date(selectedNotification.createdAt).getTime())
-                  ? formatDistanceToNow(new Date(selectedNotification.createdAt), { addSuffix: true })
-                  : 'Just now'}
-              </DialogDescription>
-            </DialogHeader>
-            <div className="py-4">
-              <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
-                {selectedNotification?.message}
-              </p>
-            </div>
-            <DialogFooter className="sm:justify-between gap-2">
-              <Button
-                type="button"
-                variant="secondary"
-                onClick={() => setSelectedNotification(null)}
-              >
-                Close
-              </Button>
-              {(selectedNotification?.link || selectedNotification?.actionUrl) && (
-                <Button
-                  type="button"
-                  onClick={() => {
-                    navigate(selectedNotification.link || selectedNotification.actionUrl);
-                    setSelectedNotification(null);
-                  }}
-                >
-                  {selectedNotification?.link ? 'View Item' : 'Go to Action'}
-                </Button>
-              )}
-            </DialogFooter>
-          </DialogContent>
-        </Dialog>
 
         <div className="pt-4"> {/* Footer Spacer */} </div>
 

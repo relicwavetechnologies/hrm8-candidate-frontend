@@ -4,14 +4,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Button } from '@/shared/components/ui/button';
 import { Badge } from '@/shared/components/ui/badge';
 import { Separator } from '@/shared/components/ui/separator';
-import {
-    Dialog,
-    DialogContent,
-    DialogDescription,
-    DialogFooter,
-    DialogHeader,
-    DialogTitle,
-} from "@/shared/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/shared/components/ui/tabs';
 import { Switch } from '@/shared/components/ui/switch';
 import { Label } from '@/shared/components/ui/label';
@@ -22,32 +14,28 @@ import { useNavigate } from 'react-router-dom';
 import { CandidatePageLayout } from '@/shared/components/layouts/CandidatePageLayout';
 import { AtsPageHeader } from '@/shared/components/layouts/AtsPageHeader';
 import { useToast } from '@/shared/hooks/use-toast';
+import { notificationService, type Notification } from '@/shared/services/notificationService';
+import { resolveCandidateNotificationTarget } from '@/shared/lib/notification-routing';
 
-interface Notification {
-    id: string;
-    type: string;
-    title: string;
-    message: string;
-    data?: {
-        applicationId?: string;
-        jobId?: string;
-        jobTitle?: string;
-        companyName?: string;
-        location?: string;
-        interviewDate?: string;
-        interviewType?: string;
-        meetingLink?: string;
-        formattedDate?: string;
-        oldStatus?: string;
-        newStatus?: string;
-        oldStage?: string;
-        newStage?: string;
-    };
-    read: boolean;
-    createdAt: string;
-    actionUrl?: string; // Standard property from backend
-    link?: string; // Legacy property
+interface NotificationData {
+    applicationId?: string;
+    jobId?: string;
+    jobTitle?: string;
+    companyName?: string;
+    location?: string;
+    interviewDate?: string;
+    interviewType?: string;
+    meetingLink?: string;
+    formattedDate?: string;
+    oldStatus?: string;
+    newStatus?: string;
+    oldStage?: string;
+    newStage?: string;
 }
+
+type NotificationItem = Notification & {
+    data?: NotificationData;
+};
 
 interface UpcomingInterview {
     applicationId: string;
@@ -74,7 +62,7 @@ interface NotificationPreferences {
 }
 
 export default function NotificationsPage() {
-    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [notifications, setNotifications] = useState<NotificationItem[]>([]);
     const [upcomingInterviews, setUpcomingInterviews] = useState<UpcomingInterview[]>([]);
     const [preferences, setPreferences] = useState<NotificationPreferences | null>(null);
     const [loading, setLoading] = useState(true);
@@ -85,7 +73,6 @@ export default function NotificationsPage() {
     const [page, setPage] = useState(0);
     const [hasMore, setHasMore] = useState(true);
     const [totalNotifications, setTotalNotifications] = useState(0);
-    const [selectedNotification, setSelectedNotification] = useState<Notification | null>(null);
     const navigate = useNavigate();
     const { toast } = useToast();
 
@@ -107,11 +94,10 @@ export default function NotificationsPage() {
         try {
             if (!initial) setLoadingMore(true);
             const limit = 20;
-            const response = await apiClient.get(`/api/candidate/notifications?limit=${limit}&offset=${offset}`);
+            const response = await notificationService.getNotifications({ limit, offset });
 
             if (response.success && response.data) {
-                const data = response.data as { notifications: Notification[]; unreadCount: number; total: number };
-                const newNotifications = data.notifications || [];
+                const newNotifications = (response.data.notifications as NotificationItem[]) || [];
 
                 if (initial) {
                     setNotifications(newNotifications);
@@ -119,8 +105,8 @@ export default function NotificationsPage() {
                     setNotifications(prev => [...prev, ...newNotifications]);
                 }
 
-                setUnreadCount(data.unreadCount || 0);
-                setTotalNotifications(data.total || 0);
+                setUnreadCount(response.data.unreadCount || 0);
+                setTotalNotifications(response.data.total || 0);
                 setHasMore(newNotifications.length === limit);
                 setPage(offset / limit);
             } else {
@@ -171,7 +157,7 @@ export default function NotificationsPage() {
 
     const markAsRead = async (id: string) => {
         try {
-            const response = await apiClient.put(`/api/candidate/notifications/${id}/read`);
+            const response = await notificationService.markAsRead(id);
             if (response.success) {
                 setNotifications(prev =>
                     prev.map(n => (n.id === id ? { ...n, read: true } : n))
@@ -196,7 +182,7 @@ export default function NotificationsPage() {
 
     const markAllAsRead = async () => {
         try {
-            const response = await apiClient.put('/api/candidate/notifications/mark-all-read');
+            const response = await notificationService.markAllAsRead();
             if (response.success) {
                 setNotifications(prev => prev.map(n => ({ ...n, read: true })));
                 setUnreadCount(0);
@@ -285,13 +271,21 @@ export default function NotificationsPage() {
         }
     };
 
-    const handleNotificationClick = (notification: Notification) => {
+    const handleNotificationClick = (notification: NotificationItem) => {
         if (!notification.read) {
-            markAsRead(notification.id);
+            void markAsRead(notification.id);
         }
 
-        // Open Dialog instead of direct navigation
-        setSelectedNotification(notification);
+        const target = resolveCandidateNotificationTarget(notification);
+        if (target) {
+            navigate(target);
+            return;
+        }
+
+        toast({
+            title: 'Notification opened',
+            description: 'Unable to resolve a direct destination for this notification.',
+        });
     };
 
     const getNotificationIcon = (type: string) => {
@@ -714,53 +708,14 @@ export default function NotificationsPage() {
                 </Tabs>
             </div>
 
-            <Dialog open={!!selectedNotification} onOpenChange={(open) => !open && setSelectedNotification(null)}>
-                <DialogContent className="sm:max-w-md">
-                    <DialogHeader>
-                        <DialogTitle className="flex items-center gap-2">
-                            {selectedNotification?.title}
-                        </DialogTitle>
-                        <DialogDescription>
-                            {selectedNotification?.createdAt && !isNaN(new Date(selectedNotification.createdAt).getTime())
-                                ? formatDistanceToNow(new Date(selectedNotification.createdAt), { addSuffix: true })
-                                : 'Just now'}
-                        </DialogDescription>
-                    </DialogHeader>
-                    <div className="py-4">
-                        <p className="text-sm text-foreground/80 leading-relaxed whitespace-pre-wrap">
-                            {selectedNotification?.message}
-                        </p>
-                    </div>
-                    <DialogFooter className="sm:justify-between gap-2">
-                        <Button
-                            type="button"
-                            variant="secondary"
-                            onClick={() => setSelectedNotification(null)}
-                        >
-                            Close
-                        </Button>
-                        {(selectedNotification?.link || selectedNotification?.actionUrl) && (
-                            <Button
-                                type="button"
-                                onClick={() => {
-                                    navigate(selectedNotification.link || selectedNotification.actionUrl || '');
-                                    setSelectedNotification(null);
-                                }}
-                            >
-                                {selectedNotification?.link ? 'View Item' : 'Go to Action'}
-                            </Button>
-                        )}
-                    </DialogFooter>
-                </DialogContent>
-            </Dialog>
         </CandidatePageLayout>
     );
 }
 
 interface NotificationCardProps {
-    notification: Notification;
+    notification: NotificationItem;
     onDelete: (id: string) => void;
-    onClick: (notification: Notification) => void;
+    onClick: (notification: NotificationItem) => void;
     getIcon: (type: string) => React.ReactNode;
 }
 

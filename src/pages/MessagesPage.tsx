@@ -18,7 +18,7 @@ import { Plus } from 'lucide-react';
 
 export default function CandidateMessagesPage() {
   const { candidate, isAuthenticated } = useCandidateAuth();
-  const { conversations, setConversations, messages } = useWebSocket();
+  const { conversations, setConversations, messages, setConversationMessages } = useWebSocket();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
 
@@ -28,6 +28,11 @@ export default function CandidateMessagesPage() {
       const response = await messagingService.getConversations();
       if (response.success && response.data) {
         setConversations(response.data);
+        response.data.forEach((conversation) => {
+          if (conversation.lastMessage) {
+            setConversationMessages(conversation.id, [conversation.lastMessage]);
+          }
+        });
       }
     } catch (error) {
       console.error('Failed to load conversations:', error);
@@ -101,4 +106,3 @@ export default function CandidateMessagesPage() {
     </CandidatePageLayout>
   );
 }
-

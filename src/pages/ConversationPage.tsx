@@ -21,7 +21,7 @@ export default function CandidateConversationPage() {
   // All hooks must be called unconditionally at the top level
   const { conversationId } = useParams<{ conversationId: string }>();
   const { candidate } = useCandidateAuth();
-  const { messages, joinConversation, leaveConversation, isConnected } = useWebSocket();
+  const { messages, joinConversation, leaveConversation, setConversationMessages } = useWebSocket();
   const navigate = useNavigate();
   const [conversation, setConversation] = useState<ConversationData | null>(
     null
@@ -37,7 +37,8 @@ export default function CandidateConversationPage() {
     try {
       const response = await messagingService.getConversation(conversationId);
       if (response.success && response.data) {
-        setConversation(response.data);
+        setConversation(response.data.conversation);
+        setConversationMessages(conversationId, response.data.messages || []);
       }
     } catch (error) {
       console.error('Failed to load conversation:', error);
@@ -146,7 +147,6 @@ export default function CandidateConversationPage() {
           <MessageInput
             conversationId={conversationId}
             conversationStatus={conversation?.status}
-            disabled={!isConnected}
             isMarkingRead={isMarkingRead}
             className="bg-muted/20 backdrop-blur-sm"
           />
@@ -155,4 +155,3 @@ export default function CandidateConversationPage() {
     </CandidatePageLayout>
   );
 }
-

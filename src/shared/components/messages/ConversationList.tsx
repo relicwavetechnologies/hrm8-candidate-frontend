@@ -36,10 +36,15 @@ export function ConversationList({
 
   const getLastMessagePreview = (conversation: ConversationData): string => {
     const conversationMessages = messages[conversation.id] || [];
-    if (conversationMessages.length === 0) {
+    const lastMessage =
+      conversationMessages.length > 0
+        ? conversationMessages[conversationMessages.length - 1]
+        : conversation.lastMessage;
+
+    if (!lastMessage) {
       return 'No messages yet';
     }
-    const lastMessage = conversationMessages[conversationMessages.length - 1];
+
     if (lastMessage.senderType === 'SYSTEM') {
       return 'System message';
     }
@@ -175,4 +180,3 @@ export function ConversationList({
     </div>
   );
 }
-
