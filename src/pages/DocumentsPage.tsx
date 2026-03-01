@@ -269,7 +269,7 @@ export default function DocumentsPage() {
       }
 
       // Use fetch directly for PUT with FormData
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const API_BASE_URL = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_BASE_URL}/api/candidate/documents/cover-letters/${editingCoverLetter.id}`, {
         method: 'PUT',
         body: formData,
@@ -351,7 +351,7 @@ export default function DocumentsPage() {
       }
 
       // Use fetch directly for PUT with FormData
-      const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+      const API_BASE_URL = import.meta.env.VITE_API_URL || '';
       const response = await fetch(`${API_BASE_URL}/api/candidate/documents/portfolio/${editingPortfolio.id}`, {
         method: 'PUT',
         body: formData,

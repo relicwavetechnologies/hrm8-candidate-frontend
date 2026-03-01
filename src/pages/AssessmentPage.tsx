@@ -264,7 +264,7 @@ export default function AssessmentPage() {
   const progress = questions.length > 0 ? ((currentQuestionIndex + 1) / questions.length) * 100 : 0;
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-50 dark:bg-slate-950">
+    <div className="min-h-screen flex flex-col bg-muted/30">
       {/* Header */}
       <header className="bg-background border-b sticky top-0 z-10">
         <div className="container py-4 flex items-center justify-between">
@@ -278,7 +278,7 @@ export default function AssessmentPage() {
           </div>
 
           {timeRemaining !== null && (
-            <div className={`flex items-center gap-2 font-mono text-lg font-bold ${timeRemaining < 60 ? 'text-red-500 animate-pulse' : 'text-primary'}`}>
+            <div className={`flex items-center gap-2 font-mono text-lg font-bold ${timeRemaining < 60 ? 'text-destructive animate-pulse' : 'text-primary'}`}>
               <Clock className="h-5 w-5" />
               {formatTime(timeRemaining)}
             </div>
@@ -364,7 +364,7 @@ export default function AssessmentPage() {
                                              ${isCurrent
                             ? 'bg-primary text-primary-foreground ring-2 ring-primary ring-offset-2'
                             : isAnswered
-                              ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-200 dark:border-green-800'
+                              ? 'bg-success/10 text-success border border-success/20'
                               : 'bg-muted text-muted-foreground hover:bg-muted/80'
                           }
                                          `}
