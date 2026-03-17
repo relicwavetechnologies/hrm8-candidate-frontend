@@ -176,8 +176,14 @@ class JobService {
   }
 
   async getPublicJobById(id: string) {
-    // Backend returns { success: true, data: { ...jobFields } } directly, not { job: {...} }
-    return apiClient.get<PublicJob>(`/api/public/jobs/${id}`);
+    const response = await apiClient.get<PublicJob | { job: PublicJob }>(`/api/public/jobs/${id}`);
+    if (response.success && response.data && 'job' in response.data) {
+      return {
+        ...response,
+        data: response.data.job,
+      };
+    }
+    return response;
   }
 
   async getFilterOptions() {
@@ -206,7 +212,16 @@ class JobService {
    * @param jobId - The job ID to get the application form for
    */
   async getApplicationForm(jobId: string) {
-    return apiClient.get<ApplicationFormResponse>(`/api/public/jobs/${jobId}/application-form`);
+    const response = await apiClient.get<ApplicationFormResponse | { form: ApplicationFormResponse }>(
+      `/api/public/jobs/${jobId}/application-form`
+    );
+    if (response.success && response.data && 'form' in response.data) {
+      return {
+        ...response,
+        data: response.data.form,
+      };
+    }
+    return response;
   }
 
   /**
