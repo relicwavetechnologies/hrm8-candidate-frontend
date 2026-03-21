@@ -57,7 +57,27 @@ export default function AssessmentPage() {
     try {
       const response = await candidateAssessmentService.getAssessment(assessmentId);
       if (response.success && response.data?.assessment) {
-        const data = response.data.assessment;
+        const raw = response.data.assessment as any;
+        const sourceQuestions = Array.isArray(raw.questions)
+          ? raw.questions
+          : Array.isArray(raw.assessment_question)
+            ? raw.assessment_question
+            : [];
+
+        const normalizedQuestions = sourceQuestions.map((q: any) => ({
+          id: q.id,
+          questionText: q.questionText || q.question_text || "",
+          questionType: q.questionType || q.question_type || "SHORT_ANSWER",
+          options: q.options ?? null,
+          points: q.points ?? 0,
+          order: q.order ?? 0,
+        }));
+
+        const data: AssessmentDetails = {
+          ...raw,
+          questions: normalizedQuestions,
+        };
+
         setAssessment(data);
 
         // If already in progress, restore state
@@ -297,7 +317,7 @@ export default function AssessmentPage() {
                 <div className="flex justify-between items-start gap-4">
                   <CardTitle className="text-lg leading-relaxed">
                     <span className="mr-2 text-muted-foreground">{currentQuestionIndex + 1}.</span>
-                    {currentQuestion?.questionText || "Question text not available"}
+                    {((currentQuestion as any)?.questionText || (currentQuestion as any)?.question_text) || "Question text not available"}
                   </CardTitle>
                   <span className="text-xs font-medium bg-muted px-2 py-1 rounded whitespace-nowrap">
                     {currentQuestion?.points || 0} pts

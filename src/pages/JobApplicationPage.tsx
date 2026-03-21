@@ -3,8 +3,8 @@
  * Candidates can apply to a specific job here.
  */
 
-import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, useNavigate, useLocation } from 'react-router-dom';
 import { useCandidateAuth } from '@/contexts/CandidateAuthContext';
 import { jobService } from '@/shared/services/jobService';
 import type { PublicJob } from '@/shared/services/jobService';
@@ -24,6 +24,7 @@ import { apiClient } from '@/shared/services/api';
 export default function JobApplicationPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const location = useLocation();
     const { isAuthenticated, candidate } = useCandidateAuth();
 
     const [job, setJob] = useState<PublicJob | null>(null);
@@ -50,6 +51,31 @@ export default function JobApplicationPage() {
         linkedInUrl: '',
         websiteUrl: '',
     });
+
+    const jobTargetAttribution = useMemo(() => {
+        const params = new URLSearchParams(location.search);
+        const rawQuery: Record<string, string> = {};
+        params.forEach((value, key) => {
+            if (value) rawQuery[key] = value;
+        });
+
+        const applicantGuid = rawQuery.applicant_guid || '';
+        const source = rawQuery.source || '';
+        const medium = rawQuery.utm_medium || '';
+        const campaign = rawQuery.utm_campaign || '';
+
+        if (!applicantGuid && !source && !medium && !campaign && Object.keys(rawQuery).length === 0) {
+            return undefined;
+        }
+
+        return {
+            applicantGuid: applicantGuid || undefined,
+            source: source || undefined,
+            medium: medium || undefined,
+            campaign: campaign || undefined,
+            rawQuery,
+        };
+    }, [location.search]);
 
     useEffect(() => {
         if (id) {
@@ -137,7 +163,8 @@ export default function JobApplicationPage() {
                     phone: formData.phone,
                     resume: resumeFile!,
                     cover_letter: coverLetterFile || undefined,
-                    portfolio: portfolioFile || undefined
+                    portfolio: portfolioFile || undefined,
+                    jobTargetAttribution,
                 });
 
                 if (response.success) {
@@ -229,6 +256,8 @@ export default function JobApplicationPage() {
                 portfolioUrl: portfolioUrlFinal,
                 linkedInUrl: formData.linkedInUrl,
                 websiteUrl: formData.websiteUrl,
+                jobTargetAttribution,
+                applicationSource: 'CANDIDATE_PORTAL' as const,
             };
 
             const response = await applicationService.submitApplication(applicationData);
@@ -262,7 +291,7 @@ export default function JobApplicationPage() {
     return (
         <Layout showSidebarTrigger={false}>
             <div className="container max-w-3xl py-10">
-                <Button variant="ghost" className="mb-6" onClick={() => navigate(`/jobs/${id}`)}>
+                <Button variant="ghost" className="mb-6" onClick={() => navigate(`/jobs/${id}${location.search}`)}>
                     <ArrowLeft className="mr-2 h-4 w-4" /> Back to Job Details
                 </Button>
 
@@ -274,6 +303,26 @@ export default function JobApplicationPage() {
                             <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {job.location}</span>
                         </div>
                     </div>
+
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Job Description</CardTitle>
+                            <CardDescription>Review the role details before you submit.</CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-4">
+                            <div className="text-sm leading-6 whitespace-pre-wrap">{job.description}</div>
+                            {Array.isArray(job.requirements) && job.requirements.length > 0 && (
+                                <div className="space-y-2">
+                                    <p className="text-sm font-medium">Requirements</p>
+                                    <ul className="list-disc pl-5 text-sm text-muted-foreground space-y-1">
+                                        {job.requirements.map((requirement, index) => (
+                                            <li key={`${index}-${requirement}`}>{requirement}</li>
+                                        ))}
+                                    </ul>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
 
                     <Card>
                         <CardHeader>
@@ -399,7 +448,7 @@ export default function JobApplicationPage() {
                     </Card>
 
                     <div className="flex justify-end gap-4">
-                        <Button variant="outline" onClick={() => navigate(`/jobs/${id}`)} type="button">Cancel</Button>
+                        <Button variant="outline" onClick={() => navigate(`/jobs/${id}${location.search}`)} type="button">Cancel</Button>
                         <Button onClick={handleSubmit} disabled={submitting} className="min-w-[150px]">
                             {submitting ? (
                                 <>

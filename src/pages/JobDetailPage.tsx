@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useCandidateAuth } from '@/contexts/CandidateAuthContext';
 import { jobService } from '@/shared/services/jobService';
 import type { PublicJob } from '@/shared/services/jobService';
@@ -29,6 +29,7 @@ export default function JobDetailPage() {
   const [relatedJobs, setRelatedJobs] = useState<PublicJob[]>([]);
   const { isAuthenticated, candidate } = useCandidateAuth();
   const navigate = useNavigate();
+  const location = useLocation();
   const { toast } = useToast();
 
   // Track if we've already tracked the view for this job
@@ -139,7 +140,7 @@ export default function JobDetailPage() {
     }
 
     // Allow unauthenticated users to apply (they'll create account during application)
-    navigate(`/jobs/${id}/apply`);
+    navigate(`/jobs/${id}/apply${location.search}`);
   };
 
   const formatSalary = (job: PublicJob) => {

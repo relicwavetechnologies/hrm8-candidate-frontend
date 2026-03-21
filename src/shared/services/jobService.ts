@@ -176,8 +176,14 @@ class JobService {
   }
 
   async getPublicJobById(id: string) {
-    // Backend returns { success: true, data: { ...jobFields } } directly, not { job: {...} }
-    return apiClient.get<PublicJob>(`/api/public/jobs/${id}`);
+    const response = await apiClient.get<PublicJob | { job: PublicJob }>(`/api/public/jobs/${id}`);
+    if (response.success && response.data && typeof response.data === 'object' && 'job' in response.data) {
+      return {
+        ...response,
+        data: response.data.job,
+      };
+    }
+    return response as typeof response & { data?: PublicJob };
   }
 
   async getFilterOptions() {
