@@ -4,7 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { useCandidateAuth } from '@/contexts/CandidateAuthContext';
 import { jobService } from '@/shared/services/jobService';
 import type { PublicJob } from '@/shared/services/jobService';
@@ -24,6 +24,8 @@ import { apiClient } from '@/shared/services/api';
 export default function JobApplicationPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const [searchParams] = useSearchParams();
+    const invitationToken = searchParams.get('invitation') ?? undefined;
     const { isAuthenticated, candidate } = useCandidateAuth();
 
     const [job, setJob] = useState<PublicJob | null>(null);
@@ -55,7 +57,7 @@ export default function JobApplicationPage() {
         if (id) {
             loadJob(id);
         }
-    }, [id]);
+    }, [id, invitationToken]);
 
     useEffect(() => {
         // Pre-fill form if authenticated
@@ -75,7 +77,7 @@ export default function JobApplicationPage() {
     const loadJob = async (jobId: string) => {
         setLoading(true);
         try {
-            const response = await jobService.getPublicJobById(jobId);
+            const response = await jobService.getPublicJobById(jobId, { invitation: invitationToken });
             if (response.success && response.data) {
                 setJob(response.data);
             } else {
@@ -137,7 +139,8 @@ export default function JobApplicationPage() {
                     phone: formData.phone,
                     resume: resumeFile!,
                     cover_letter: coverLetterFile || undefined,
-                    portfolio: portfolioFile || undefined
+                    portfolio: portfolioFile || undefined,
+                    invitationToken,
                 });
 
                 if (response.success) {
@@ -229,6 +232,7 @@ export default function JobApplicationPage() {
                 portfolioUrl: portfolioUrlFinal,
                 linkedInUrl: formData.linkedInUrl,
                 websiteUrl: formData.websiteUrl,
+                invitationToken,
             };
 
             const response = await applicationService.submitApplication(applicationData);
@@ -262,7 +266,13 @@ export default function JobApplicationPage() {
     return (
         <Layout showSidebarTrigger={false}>
             <div className="container max-w-3xl py-10">
-                <Button variant="ghost" className="mb-6" onClick={() => navigate(`/jobs/${id}`)}>
+                <Button
+                    variant="ghost"
+                    className="mb-6"
+                    onClick={() =>
+                      navigate(invitationToken ? `/jobs/${id}?invitation=${encodeURIComponent(invitationToken)}` : `/jobs/${id}`)
+                    }
+                  >
                     <ArrowLeft className="mr-2 h-4 w-4" /> Back to Job Details
                 </Button>
 

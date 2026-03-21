@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useCandidateAuth } from '@/contexts/CandidateAuthContext';
 import { jobService } from '@/shared/services/jobService';
 import type { PublicJob } from '@/shared/services/jobService';
@@ -22,6 +22,8 @@ import { trackJobAnalytics } from '@/shared/services/analytics';
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const [searchParams] = useSearchParams();
+  const invitationToken = searchParams.get('invitation') ?? undefined;
   const [job, setJob] = useState<PublicJob | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
@@ -42,13 +44,13 @@ export default function JobDetailPage() {
         checkIfSaved();
       }
     }
-  }, [id, isAuthenticated, candidate]);
+  }, [id, isAuthenticated, candidate, invitationToken]);
 
   const loadJob = async () => {
     if (!id) return;
     setIsLoading(true);
     try {
-      const response = await jobService.getPublicJobById(id);
+      const response = await jobService.getPublicJobById(id, { invitation: invitationToken });
       // Backend returns { success: true, data: { ...jobFields } }
       setJob(response.data || null);
 
@@ -139,7 +141,10 @@ export default function JobDetailPage() {
     }
 
     // Allow unauthenticated users to apply (they'll create account during application)
-    navigate(`/jobs/${id}/apply`);
+    const applyPath = invitationToken
+      ? `/jobs/${id}/apply?invitation=${encodeURIComponent(invitationToken)}`
+      : `/jobs/${id}/apply`;
+    navigate(applyPath);
   };
 
   const formatSalary = (job: PublicJob) => {

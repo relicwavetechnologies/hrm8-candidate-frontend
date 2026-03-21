@@ -12,6 +12,7 @@ export interface SubmitApplicationRequest {
   portfolioUrl?: string;
   linkedInUrl?: string;
   websiteUrl?: string;
+  invitationToken?: string;
   customAnswers?: Array<{
     questionId: string;
     answer: string | string[];
@@ -64,6 +65,7 @@ class ApplicationService {
     resume: File;
     cover_letter?: File;
     portfolio?: File;
+    invitationToken?: string;
   }) {
     const formData = new FormData();
     formData.append('jobId', data.jobId);
@@ -74,6 +76,7 @@ class ApplicationService {
     formData.append('resume', data.resume);
     if (data.cover_letter) formData.append('cover_letter', data.cover_letter);
     if (data.portfolio) formData.append('portfolio', data.portfolio);
+    if (data.invitationToken) formData.append('invitationToken', data.invitationToken);
 
     return apiClient.upload<{ applicationId: string; message: string }>('/api/public/applications/guest', formData);
   }

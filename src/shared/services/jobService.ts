@@ -175,8 +175,13 @@ class JobService {
     );
   }
 
-  async getPublicJobById(id: string) {
-    const response = await apiClient.get<PublicJob | { job: PublicJob }>(`/api/public/jobs/${id}`);
+  async getPublicJobById(id: string, opts?: { invitation?: string }) {
+    const params = new URLSearchParams();
+    if (opts?.invitation) params.append('invitation', opts.invitation);
+    const qs = params.toString();
+    const response = await apiClient.get<PublicJob | { job: PublicJob }>(
+      `/api/public/jobs/${id}${qs ? `?${qs}` : ''}`
+    );
     if (response.success && response.data && 'job' in response.data) {
       return {
         ...response,
