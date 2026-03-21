@@ -19,6 +19,14 @@ export interface SubmitApplicationRequest {
   }>;
   questionnaireData?: any;
   tags?: string[];
+  jobTargetAttribution?: {
+    applicantGuid?: string;
+    source?: string;
+    medium?: string;
+    campaign?: string;
+    rawQuery?: Record<string, string>;
+  };
+  applicationSource?: 'CANDIDATE_PORTAL' | 'HRM8_BOARD';
 }
 
 export interface Application {
@@ -66,6 +74,13 @@ class ApplicationService {
     cover_letter?: File;
     portfolio?: File;
     invitationToken?: string;
+    jobTargetAttribution?: {
+      applicantGuid?: string;
+      source?: string;
+      medium?: string;
+      campaign?: string;
+      rawQuery?: Record<string, string>;
+    };
   }) {
     const formData = new FormData();
     formData.append('jobId', data.jobId);
@@ -77,6 +92,9 @@ class ApplicationService {
     if (data.cover_letter) formData.append('cover_letter', data.cover_letter);
     if (data.portfolio) formData.append('portfolio', data.portfolio);
     if (data.invitationToken) formData.append('invitationToken', data.invitationToken);
+    if (data.jobTargetAttribution) {
+      formData.append('jobTargetAttribution', JSON.stringify(data.jobTargetAttribution));
+    }
 
     return apiClient.upload<{ applicationId: string; message: string }>('/api/public/applications/guest', formData);
   }
@@ -349,4 +367,3 @@ class TalentPoolService {
 export const talentPoolService = new TalentPoolService();
 
 export const applicationService = new ApplicationService();
-

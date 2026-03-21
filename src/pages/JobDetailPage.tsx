@@ -3,7 +3,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
-import { useParams, useNavigate, useSearchParams, Link } from 'react-router-dom';
+import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useCandidateAuth } from '@/contexts/CandidateAuthContext';
 import { jobService } from '@/shared/services/jobService';
 import type { PublicJob } from '@/shared/services/jobService';
@@ -22,8 +22,8 @@ import { trackJobAnalytics } from '@/shared/services/analytics';
 
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
-  const [searchParams] = useSearchParams();
-  const invitationToken = searchParams.get('invitation') ?? undefined;
+  const location = useLocation();
+  const invitationToken = new URLSearchParams(location.search).get('invitation') ?? undefined;
   const [job, setJob] = useState<PublicJob | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaved, setIsSaved] = useState(false);
@@ -141,10 +141,7 @@ export default function JobDetailPage() {
     }
 
     // Allow unauthenticated users to apply (they'll create account during application)
-    const applyPath = invitationToken
-      ? `/jobs/${id}/apply?invitation=${encodeURIComponent(invitationToken)}`
-      : `/jobs/${id}/apply`;
-    navigate(applyPath);
+    navigate(`/jobs/${id}/apply${location.search}`);
   };
 
   const formatSalary = (job: PublicJob) => {

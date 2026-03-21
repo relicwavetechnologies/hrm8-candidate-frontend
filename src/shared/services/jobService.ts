@@ -182,7 +182,7 @@ class JobService {
     const response = await apiClient.get<PublicJob | { job: PublicJob }>(
       `/api/public/jobs/${id}${qs ? `?${qs}` : ''}`
     );
-    if (response.success && response.data && 'job' in response.data) {
+    if (response.success && response.data && typeof response.data === 'object' && 'job' in response.data) {
       return {
         ...response,
         data: response.data.job,
