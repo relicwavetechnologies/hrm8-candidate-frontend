@@ -334,31 +334,31 @@ export default function WorkHistoryPage() {
                 />
 
                 {/* Resume Upload Section - Compact AI-Powered Design */}
-                <div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-4">
+                <div className="bg-primary/5 border border-primary/20 rounded-lg p-4">
                     <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3 flex-1">
-                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-500/10 shrink-0">
-                                <Sparkles className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+                            <div className="flex items-center justify-center w-10 h-10 rounded-full bg-primary/10 shrink-0">
+                                <Sparkles className="h-5 w-5 text-primary" />
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 mb-1">
-                                    <h3 className="text-sm font-semibold text-gray-900 dark:text-gray-100">
+                                    <h3 className="text-sm font-semibold text-foreground">
                                         Auto-fill with AI
                                     </h3>
-                                    <Badge variant="secondary" className="h-5 px-2 text-[10px] bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                                    <Badge variant="secondary" className="h-5 px-2 text-[10px] bg-primary/10 text-primary">
                                         AI-Powered
                                     </Badge>
                                 </div>
-                                <p className="text-xs text-gray-600 dark:text-gray-400">
+                                <p className="text-xs text-muted-foreground">
                                     Upload your resume to automatically extract work history, skills & qualifications
                                 </p>
                             </div>
                         </div>
 
                         {isParsing ? (
-                            <div className="flex items-center gap-2 px-4 py-2 bg-white dark:bg-gray-800 rounded-md border border-gray-200 dark:border-gray-700">
-                                <Loader2 className="h-4 w-4 animate-spin text-blue-600" />
-                                <span className="text-sm font-medium text-gray-700 dark:text-gray-300">Parsing...</span>
+                            <div className="flex items-center gap-2 px-4 py-2 bg-background rounded-md border border-border">
+                                <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                                <span className="text-sm font-medium text-foreground">Parsing...</span>
                             </div>
                         ) : (
                             <>
@@ -371,7 +371,7 @@ export default function WorkHistoryPage() {
                                 />
                                 <Label
                                     htmlFor="resume-upload"
-                                    className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium rounded-md transition-colors shrink-0"
+                                    className="cursor-pointer inline-flex items-center gap-2 px-4 py-2 bg-primary hover:bg-primary/90 text-primary-foreground text-sm font-medium rounded-md transition-colors shrink-0"
                                 >
                                     <Upload className="h-4 w-4" />
                                     Upload Resume
@@ -381,12 +381,12 @@ export default function WorkHistoryPage() {
                     </div>
 
                     {candidate?.resumeUrl && !isParsing && (
-                        <div className="mt-3 pt-3 border-t border-blue-200 dark:border-blue-800">
+                        <div className="mt-3 pt-3 border-t border-primary/20">
                             <a
                                 href={candidate.resumeUrl}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="inline-flex items-center gap-2 text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors"
+                                className="inline-flex items-center gap-2 text-xs text-primary hover:text-primary/80 transition-colors"
                             >
                                 <FileText className="h-3.5 w-3.5" />
                                 <span className="font-medium">{uploadedFileName || 'Current Resume'}</span>
