@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { safeOpenExternal } from '@/shared/lib/safeExternalLink';
 import { CandidatePageLayout } from '@/shared/components/layouts/CandidatePageLayout';
 import { AtsPageHeader } from '@/shared/components/layouts/AtsPageHeader';
 import { Card, CardContent } from '@/shared/components/ui/card';
@@ -1025,7 +1026,7 @@ export default function DocumentsPage() {
                             <Button
                               variant="ghost"
                               size="sm"
-                              onClick={() => window.open(item.externalUrl, '_blank')}
+                              onClick={() => safeOpenExternal(item.externalUrl)}
                               title="Open link"
                             >
                               <ExternalLink className="h-4 w-4" />

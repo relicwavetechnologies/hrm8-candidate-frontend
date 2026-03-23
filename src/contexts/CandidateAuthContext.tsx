@@ -61,10 +61,26 @@ export function CandidateAuthProvider({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Remove any legacy token from localStorage (auth is cookie-based only)
+  useEffect(() => {
+    localStorage.removeItem('candidate_token');
+    localStorage.removeItem('candidate_user');
+  }, []);
+
   // Check if candidate is authenticated on mount
   useEffect(() => {
     checkAuth();
   }, []);
+
+  // Listen for 401 from any API call; clear session and redirect
+  useEffect(() => {
+    const handleUnauthorized = () => {
+      setCandidate(null);
+      navigate('/candidate/login');
+    };
+    window.addEventListener('auth:unauthorized', handleUnauthorized);
+    return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
+  }, [navigate]);
 
   const checkAuth = async () => {
     try {

@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { safeOpenExternal } from '@/shared/lib/safeExternalLink';
 import { Bell, Check, Trash2, Loader2, Calendar, Briefcase, Mail, Clock, FileText, Info } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Button } from '@/shared/components/ui/button';
@@ -482,7 +483,7 @@ export default function NotificationsPage() {
                                                     <Button
                                                         variant="outline"
                                                         size="sm"
-                                                        onClick={() => window.open(interview.meetingLink, '_blank')}
+                                                        onClick={() => safeOpenExternal(interview.meetingLink)}
                                                     >
                                                         Join Meeting
                                                     </Button>

@@ -40,6 +40,9 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 401) {
+          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+        }
         return {
           success: false,
           error: data.error || `HTTP ${response.status}: ${response.statusText}`,
@@ -82,6 +85,9 @@ class ApiClient {
       const data = await response.json();
 
       if (!response.ok) {
+        if (response.status === 401) {
+          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+        }
         return {
           success: false,
           error: data.error || `HTTP ${response.status}: ${response.statusText}`,
@@ -132,6 +138,9 @@ class ApiClient {
     try {
       const response = await fetch(url, config);
       if (!response.ok) {
+        if (response.status === 401) {
+          window.dispatchEvent(new CustomEvent('auth:unauthorized'));
+        }
         throw new Error(`HTTP ${response.status}: ${response.statusText}`);
       }
       return await response.blob();

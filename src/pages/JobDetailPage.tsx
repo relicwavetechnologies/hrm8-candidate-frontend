@@ -3,6 +3,7 @@
  */
 
 import { useState, useEffect, useRef } from 'react';
+import { safeOpenExternal } from '@/shared/lib/safeExternalLink';
 import { useParams, useNavigate, Link, useLocation } from 'react-router-dom';
 import { useCandidateAuth } from '@/contexts/CandidateAuthContext';
 import { jobService } from '@/shared/services/jobService';
@@ -369,7 +370,7 @@ export default function JobDetailPage() {
                   <Button
                     variant="outline"
                     className="w-full"
-                    onClick={() => window.open(job.company?.website, '_blank')}
+                    onClick={() => safeOpenExternal(job.company?.website)}
                   >
                     Visit Website
                   </Button>

@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { safeOpenExternal } from "@/shared/lib/safeExternalLink";
 import { useParams, Link } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/shared/components/ui/card";
 import { Button } from "@/shared/components/ui/button";
@@ -259,7 +260,7 @@ export default function CompanyDetailPage() {
                                             src={url}
                                             alt={`${company.name} gallery ${index + 1}`}
                                             className="h-32 w-full rounded-lg object-cover hover:shadow-lg transition-shadow cursor-pointer"
-                                            onClick={() => window.open(url, '_blank')}
+                                            onClick={() => safeOpenExternal(url)}
                                         />
                                     ))}
                                 </div>

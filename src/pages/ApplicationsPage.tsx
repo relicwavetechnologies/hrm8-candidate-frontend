@@ -4,6 +4,7 @@
  */
 
 import { useState, useEffect } from 'react';
+import { safeOpenExternal } from '@/shared/lib/safeExternalLink';
 import * as React from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { applicationService } from '@/shared/services/applicationService';
@@ -419,7 +420,7 @@ export default function ApplicationsPage() {
         variant: 'destructive',
       });
       // Fallback: open in new tab
-      window.open(url, '_blank');
+      safeOpenExternal(url);
     }
   };
 
@@ -751,9 +752,7 @@ export default function ApplicationsPage() {
                                         size="sm"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          if (app.portfolioUrl?.startsWith('http')) {
-                                            window.open(app.portfolioUrl, '_blank', 'noopener,noreferrer');
-                                          } else {
+                                          if (!safeOpenExternal(app.portfolioUrl)) {
                                             toast({
                                               title: 'Invalid URL',
                                               description: 'This portfolio link is not valid',
@@ -788,7 +787,7 @@ export default function ApplicationsPage() {
                                         size="sm"
                                         onClick={(e) => {
                                           e.stopPropagation();
-                                          window.open(app.linkedInUrl, '_blank', 'noopener,noreferrer');
+                                          safeOpenExternal(app.linkedInUrl);
                                         }}
                                       >
                                         <ExternalLink className="h-3.5 w-3.5 mr-1" />
@@ -832,7 +831,7 @@ export default function ApplicationsPage() {
                                                 variant="outline"
                                                 size="sm"
                                                 className="mt-2"
-                                                onClick={() => window.open(interview.meetingLink, '_blank')}
+                                                onClick={() => safeOpenExternal(interview.meetingLink)}
                                               >
                                                 <Video className="h-3.5 w-3.5 mr-2" />
                                                 Join Meeting
