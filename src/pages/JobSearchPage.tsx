@@ -200,7 +200,7 @@ export default function JobSearchPage() {
         description: "Please sign in to save jobs",
         variant: "default",
       });
-      navigate('/candidate/login', { state: { from: '/jobs' } });
+      navigate('/login', { state: { from: '/jobs' } });
       return;
     }
 

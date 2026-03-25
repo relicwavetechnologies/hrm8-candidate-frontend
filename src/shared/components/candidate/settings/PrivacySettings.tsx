@@ -30,23 +30,20 @@ export function PrivacySettings() {
     const handleExportData = async () => {
         setIsExporting(true);
         try {
-            const response = await apiClient.get<Blob>("/api/candidate/profile/export", {
-                // @ts-ignore - axios responseType passed through RequestInit options is a bit hacky but works with our apiClient setup if handled
-                responseType: 'blob' as any,
-            });
-
-            if (!response.success || !response.data) {
-                throw new Error(response.error || "Failed to export data");
+            const blob = await apiClient.getBlob("/api/candidate/profile/export");
+            if (!blob) {
+                throw new Error("Failed to export data");
             }
 
             // Create download link
-            const url = window.URL.createObjectURL(new Blob([response.data]));
+            const url = window.URL.createObjectURL(blob);
             const link = document.createElement('a');
             link.href = url;
             link.setAttribute('download', `candidate-data-${new Date().toISOString().split('T')[0]}.json`);
             document.body.appendChild(link);
             link.click();
             link.remove();
+            window.URL.revokeObjectURL(url);
 
             toast.success("Data export started successfully");
         } catch (error) {
@@ -66,12 +63,12 @@ export function PrivacySettings() {
         setIsDeleting(true);
         try {
             await apiClient.delete("/api/candidate/profile", {
-                data: { password: deletePassword }
+                password: deletePassword
             });
 
             toast.success("Account deleted successfully");
             logout();
-            navigate("/candidate/login");
+            navigate("/login");
         } catch (error: any) {
             console.error("Delete failed:", error);
             toast.error(error.response?.data?.error || "Failed to delete account");

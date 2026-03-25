@@ -45,10 +45,10 @@ export function PublicCandidateHeader({ breadcrumbActions }: PublicCandidateHead
             ) : (
               <div className="flex items-center gap-2">
                 <Button variant="ghost" size="sm" asChild>
-                  <Link to="/candidate/login">Sign In</Link>
+                  <Link to="/login">Sign In</Link>
                 </Button>
                 <Button size="sm" asChild>
-                  <Link to="/candidate/register">Sign Up</Link>
+                  <Link to="/register">Sign Up</Link>
                 </Button>
               </div>
             )}
