@@ -76,7 +76,7 @@ export function CandidateAuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const handleUnauthorized = () => {
       setCandidate(null);
-      navigate('/candidate/login');
+      navigate('/login');
     };
     window.addEventListener('auth:unauthorized', handleUnauthorized);
     return () => window.removeEventListener('auth:unauthorized', handleUnauthorized);
@@ -178,7 +178,7 @@ export function CandidateAuthProvider({ children }: { children: ReactNode }) {
       // Ignore logout errors
     } finally {
       setCandidate(null);
-      navigate('/candidate/login');
+      navigate('/login');
     }
   };
 

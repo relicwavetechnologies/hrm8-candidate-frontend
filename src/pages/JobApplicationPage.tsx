@@ -103,8 +103,13 @@ export default function JobApplicationPage() {
         setLoading(true);
         try {
             const response = await jobService.getPublicJobById(jobId, { invitation: invitationToken });
-            if (response.success && response.data) {
-                setJob(response.data);
+            const payload = response.data;
+            const normalizedJob =
+                payload && typeof payload === 'object' && 'job' in payload
+                    ? (payload as { job: PublicJob }).job
+                    : (payload as PublicJob | undefined);
+            if (response.success && normalizedJob) {
+                setJob(normalizedJob);
             } else {
                 toast.error("Job not found");
                 navigate('/jobs');

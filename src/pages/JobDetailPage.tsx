@@ -52,11 +52,15 @@ export default function JobDetailPage() {
     setIsLoading(true);
     try {
       const response = await jobService.getPublicJobById(id, { invitation: invitationToken });
-      // Backend returns { success: true, data: { ...jobFields } }
-      setJob(response.data || null);
+      const payload = response.data;
+      const normalizedJob =
+        payload && typeof payload === 'object' && 'job' in payload
+          ? (payload as { job: PublicJob }).job
+          : (payload as PublicJob | undefined);
+      setJob(normalizedJob || null);
 
       // Track detail view only once per job (prevent double tracking from StrictMode/re-renders)
-      if (response.data && hasTrackedView.current !== id) {
+      if (normalizedJob && hasTrackedView.current !== id) {
         hasTrackedView.current = id;
         trackJobAnalytics(id, 'DETAIL_VIEW', isAuthenticated ? 'CANDIDATE_PORTAL' : 'HRM8_BOARD');
       }
@@ -105,7 +109,7 @@ export default function JobDetailPage() {
         description: "Please sign in to save jobs",
         variant: "default",
       });
-      navigate('/candidate/login', { state: { from: `/jobs/${id}` } });
+      navigate('/login', { state: { from: `/jobs/${id}` } });
       return;
     }
 
