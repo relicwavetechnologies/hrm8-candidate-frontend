@@ -44,9 +44,11 @@ export interface ApprovedCompany {
   name: string;
   website: string;
   domain: string;
+  verificationStatus?: string | null;
   logoUrl: string | null;
   bannerUrl: string | null;
   about: string | null;
+  overview?: string | null;
   social: {
     linkedin?: string;
     twitter?: string;
@@ -54,6 +56,25 @@ export interface ApprovedCompany {
     instagram?: string;
   } | null;
   images: string[] | null;
+  companySize?: string | null;
+  industries?: string[] | null;
+  yearFounded?: number | null;
+  primaryLocation?: {
+    id?: string;
+    name?: string;
+    city?: string;
+    stateOrRegion?: string;
+    country?: string;
+    isPrimary?: boolean;
+  } | null;
+  additionalLocations?: Array<{
+    id?: string;
+    name?: string;
+    city?: string;
+    stateOrRegion?: string;
+    country?: string;
+    isPrimary?: boolean;
+  }> | null;
   jobCount: number;
 }
 
