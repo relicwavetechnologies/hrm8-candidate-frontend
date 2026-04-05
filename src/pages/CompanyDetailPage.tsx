@@ -572,57 +572,56 @@ export default function CompanyDetailPage() {
     .map((location) => formatProfileLocation(location))
     .filter((value): value is string => Boolean(value));
   const officeFootprint = uniqueValues([primaryLocationLabel, ...additionalLocationLabels]);
-  const companyFacts: Array<{
+  type CompanyFact = {
     icon: LucideIcon;
     tone: SurfaceTone;
     label: string;
     value: string;
     helper?: string;
-  }> = [
-    company?.industries?.length
-      ? {
-          icon: Layers3,
-          tone: 'coral' as const,
-          label: 'Industry',
-          value: company.industries.slice(0, 2).join(', '),
-          helper: company.industries.length > 2 ? `+${company.industries.length - 2} more` : undefined,
-        }
-      : null,
-    company?.companySize
-      ? {
-          icon: Building2,
-          tone: 'brand' as const,
-          label: 'Company size',
-          value: formatReadableValue(company.companySize) || company.companySize,
-        }
-      : null,
-    company?.yearFounded
-      ? {
-          icon: CalendarDays,
-          tone: 'warning' as const,
-          label: 'Founded',
-          value: String(company.yearFounded),
-        }
-      : null,
-    primaryLocationLabel
-      ? {
-          icon: MapPin,
-          tone: 'success' as const,
-          label: 'Headquarters',
-          value: primaryLocationLabel,
-        }
-      : null,
-  ].filter(
-    (
-      item
-    ): item is {
-      icon: LucideIcon;
-      tone: SurfaceTone;
-      label: string;
-      value: string;
-      helper?: string;
-    } => Boolean(item)
-  );
+  };
+  const companyFacts: CompanyFact[] = [
+    ...(company?.industries?.length
+      ? [
+          {
+            icon: Layers3,
+            tone: 'coral' as const,
+            label: 'Industry',
+            value: company.industries.slice(0, 2).join(', '),
+            helper: company.industries.length > 2 ? `+${company.industries.length - 2} more` : undefined,
+          },
+        ]
+      : []),
+    ...(company?.companySize
+      ? [
+          {
+            icon: Building2,
+            tone: 'brand' as const,
+            label: 'Company size',
+            value: formatReadableValue(company.companySize) || company.companySize,
+          },
+        ]
+      : []),
+    ...(company?.yearFounded
+      ? [
+          {
+            icon: CalendarDays,
+            tone: 'warning' as const,
+            label: 'Founded',
+            value: String(company.yearFounded),
+          },
+        ]
+      : []),
+    ...(primaryLocationLabel
+      ? [
+          {
+            icon: MapPin,
+            tone: 'success' as const,
+            label: 'Headquarters',
+            value: primaryLocationLabel,
+          },
+        ]
+      : []),
+  ];
   const hiringFocusTeams = departmentList.slice(0, 4);
   const hiringFocusLocations = locationList.slice(0, 4);
 
