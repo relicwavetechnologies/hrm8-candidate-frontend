@@ -67,10 +67,9 @@ export default function ProfilePage() {
       const formData = new FormData();
       formData.append('file', file);
       formData.append('type', 'profile-photo');
-      const uploadRes = await apiClient.post('/api/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-      const photoUrl = uploadRes.data?.data?.url || uploadRes.data?.url;
+      const uploadRes = await apiClient.upload<{ url?: string; data?: { url?: string } }>('/api/upload', formData);
+      const uploadData = uploadRes.data as any;
+      const photoUrl = uploadData?.data?.url || uploadData?.url;
       if (!photoUrl) throw new Error('Upload succeeded but no URL returned');
 
       // Step 2: Update candidate profile with the new photo URL

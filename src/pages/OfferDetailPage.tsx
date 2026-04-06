@@ -373,9 +373,7 @@ export default function OfferDetailPage() {
   // Derived values
   // -----------------------------------------------------------------------
 
-  const canAct = offer?.status === "sent" || offer?.status === "under-negotiation";
-  const canAccept = canAct;
-  const canDecline = canAct;
+  const canAct = offer?.status === "sent" || (offer?.status as string) === "under-negotiation";
   const canNegotiate = canAct;
 
   const statusConfig: Record<string, { label: string; className: string }> = {

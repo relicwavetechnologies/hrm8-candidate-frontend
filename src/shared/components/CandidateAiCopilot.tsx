@@ -7,7 +7,7 @@
  */
 
 import {
-  FormEvent,
+  type FormEvent,
   useMemo,
   useState,
   useEffect,
@@ -293,7 +293,7 @@ export function CandidateAiCopilot() {
       const text = input.trim();
       if (!text || isStreaming) return;
       setInput("");
-      sendMessage({ role: "user", content: text });
+      sendMessage({ text });
     },
     [input, isStreaming, sendMessage]
   );
@@ -301,7 +301,7 @@ export function CandidateAiCopilot() {
   const handlePromptClick = useCallback(
     (prompt: string) => {
       if (isStreaming) return;
-      sendMessage({ role: "user", content: prompt });
+      sendMessage({ text: prompt });
     },
     [isStreaming, sendMessage]
   );
