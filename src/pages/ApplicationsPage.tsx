@@ -10,6 +10,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { applicationService } from '@/shared/services/applicationService';
 import type { Application } from '@/shared/services/applicationService';
 import { apiClient } from '@/shared/services/api';
+import { jobService } from '@/shared/services/jobService';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { CandidatePageLayout } from '@/shared/components/layouts/CandidatePageLayout';
 import { AtsPageHeader } from '@/shared/components/layouts/AtsPageHeader';
@@ -229,12 +230,31 @@ export default function ApplicationsPage() {
     if (!app.detailsLoaded) {
       setLoadingDetail(true);
       try {
-        const response = await applicationService.getApplication(app.id);
+        const [response, formResponse] = await Promise.all([
+          applicationService.getApplication(app.id),
+          jobService.getApplicationForm(app.jobId),
+        ]);
+
+        let questionMap: Record<string, string> = {};
+        if (formResponse.success && formResponse.data) {
+          const formData = formResponse.data as any;
+          const questions = formData?.form?.questions || formData?.questions || [];
+          for (const q of questions) {
+            if (q.id && q.label) questionMap[q.id] = q.label;
+          }
+        }
+
         if (response.data?.application) {
           const fullApp = response.data.application;
+          // Enrich customAnswers with question labels
+          const enrichedAnswers = (fullApp.customAnswers || app.customAnswers || []).map((ans: any) => ({
+            ...ans,
+            question: questionMap[ans.questionId] || ans.question || null,
+          }));
           const updated: ApplicationWithDetails = {
             ...app,
             ...fullApp,
+            customAnswers: enrichedAnswers,
             detailsLoaded: true,
             jobDetails: (fullApp as any).job ? {
               ...app.jobDetails!,
