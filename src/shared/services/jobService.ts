@@ -5,28 +5,66 @@
 
 import { apiClient } from '@/shared/services/api';
 
+export interface PublicJobLocation {
+  displayName: string;
+  rawInput?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postalCode?: string;
+  latitude?: number;
+  longitude?: number;
+  placeId?: string;
+  provider?: string;
+  featureType?: string;
+  isManual?: boolean;
+}
+
 export interface PublicJob {
   id: string;
   title: string;
   description: string;
   jobSummary?: string;
+  job_summary?: string;
   category?: string;
   location: string;
+  jobLocation?: PublicJobLocation;
   department?: string;
   workArrangement: string;
+  work_arrangement?: string;
   employmentType: string;
+  employment_type?: string;
   numberOfVacancies: number;
+  number_of_vacancies?: number;
+  experienceLevel?: string;
+  experience_level?: string;
   salaryMin?: number;
+  salary_min?: number;
   salaryMax?: number;
+  salary_max?: number;
   salaryCurrency: string;
+  salary_currency?: string;
   salaryDescription?: string;
+  salary_description?: string;
+  salaryPeriod?: string;
+  salary_period?: string;
+  hideSalary?: boolean;
+  hide_salary?: boolean;
   requirements: string[];
   responsibilities: string[];
   promotionalTags: string[];
+  promotional_tags?: string[];
+  benefits?: string | string[] | Record<string, unknown>;
   featured: boolean;
   postingDate?: string;
+  posting_date?: string;
   expiryDate?: string;
+  expires_at?: string;
+  closeDate?: string;
+  close_date?: string;
   regionId?: string;
+  jobCode?: string;
+  job_code?: string;
   company: {
     id: string;
     name: string;
@@ -37,6 +75,7 @@ export interface PublicJob {
   };
   applicationForm?: any;
   createdAt: string;
+  created_at?: string;
 }
 
 export interface ApprovedCompany {

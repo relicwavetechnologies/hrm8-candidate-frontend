@@ -1,6 +1,6 @@
 /**
  * Candidate Job Search Page
- * Comprehensive job search with advanced filtering
+ * Compact ATS-style job search with advanced filtering
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -11,7 +11,7 @@ import { apiClient } from '@/shared/services/api';
 import { useToast } from '@/shared/hooks/use-toast';
 
 import { Button } from '@/shared/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Card, CardContent } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
 import { Label } from '@/shared/components/ui/label';
 import { Checkbox } from '@/shared/components/ui/checkbox';
@@ -29,13 +29,97 @@ import {
   Building2,
   TrendingUp,
   SlidersHorizontal,
-  Loader2
+  Loader2,
+  Users,
+  Globe,
+  Monitor,
+  GraduationCap,
 } from 'lucide-react';
 import { formatDistanceToNow } from 'date-fns';
 import { cn } from '@/shared/lib/utils';
 import { PublicCandidatePageLayout } from '@/shared/components/layouts/PublicCandidatePageLayout';
 import { CandidatePageLayout } from '@/shared/components/layouts/CandidatePageLayout';
 import { useCandidateAuth } from '@/contexts/CandidateAuthContext';
+
+/* ── helpers ── */
+
+function getEmploymentTypeVariant(type: string) {
+  const normalized = type?.toLowerCase().replace(/_/g, '-');
+  const map: Record<string, 'default' | 'purple' | 'orange' | 'teal'> = {
+    'full-time': 'default',
+    'full_time': 'default',
+    'part-time': 'purple',
+    'part_time': 'purple',
+    'contract': 'orange',
+    'casual': 'teal',
+  };
+  return map[normalized] || map[type] || 'neutral' as const;
+}
+
+function formatEmploymentType(type: string) {
+  const map: Record<string, string> = {
+    'FULL_TIME': 'Full-time', 'full-time': 'Full-time', 'full_time': 'Full-time',
+    'PART_TIME': 'Part-time', 'part-time': 'Part-time', 'part_time': 'Part-time',
+    'CONTRACT': 'Contract', 'contract': 'Contract',
+    'CASUAL': 'Casual', 'casual': 'Casual',
+  };
+  return map[type] || type?.replace(/_/g, ' ') || 'N/A';
+}
+
+function formatWorkArrangement(type: string) {
+  const map: Record<string, string> = {
+    'ON_SITE': 'On-site', 'on-site': 'On-site', 'on_site': 'On-site',
+    'REMOTE': 'Remote', 'remote': 'Remote',
+    'HYBRID': 'Hybrid', 'hybrid': 'Hybrid',
+  };
+  return map[type] || type?.replace(/_/g, ' ') || 'N/A';
+}
+
+function getWorkArrangementIcon(type: string) {
+  const normalized = type?.toUpperCase();
+  if (normalized === 'REMOTE') return Globe;
+  if (normalized === 'HYBRID') return Monitor;
+  return MapPin;
+}
+
+function formatExperienceLevel(level?: string) {
+  if (!level) return null;
+  const map: Record<string, string> = {
+    'entry': 'Entry Level', 'mid': 'Mid Level', 'senior': 'Senior', 'executive': 'Executive',
+  };
+  return map[level.toLowerCase()] || level;
+}
+
+function formatSalary(job: PublicJob) {
+  const min = job.salaryMin ?? job.salary_min;
+  const max = job.salaryMax ?? job.salary_max;
+  const currency = job.salaryCurrency || job.salary_currency || 'USD';
+  const description = job.salaryDescription || job.salary_description;
+  const period = job.salaryPeriod || job.salary_period;
+  const hidden = job.hideSalary ?? job.hide_salary;
+
+  if (hidden) return 'Competitive';
+  if (!min && !max) return description || 'Salary not disclosed';
+
+  const formatter = new Intl.NumberFormat('en-US', {
+    style: 'currency', currency, minimumFractionDigits: 0, maximumFractionDigits: 0,
+  });
+
+  let range = '';
+  if (min && max) range = `${formatter.format(min)} – ${formatter.format(max)}`;
+  else if (min) range = `From ${formatter.format(min)}`;
+  else if (max) range = `Up to ${formatter.format(max)}`;
+
+  if (period) {
+    const periodMap: Record<string, string> = {
+      'hourly': '/hr', 'daily': '/day', 'weekly': '/wk', 'monthly': '/mo', 'annual': '/yr',
+    };
+    range += ` ${periodMap[period] || ''}`;
+  }
+  return range;
+}
+
+/* ── component ── */
 
 export default function JobSearchPage() {
   const [jobs, setJobs] = useState<PublicJob[]>([]);
@@ -89,7 +173,6 @@ export default function JobSearchPage() {
         if (filters.salaryMax) setSalaryMax(String(filters.salaryMax));
         if (filters.featured && typeof filters.featured === 'boolean') setFeaturedOnly(filters.featured);
 
-        // If there are advanced filters, show them
         if (filters.category || filters.department || filters.salaryMin || filters.salaryMax || filters.featured) {
           setShowAdvancedFilters(true);
         }
@@ -101,12 +184,10 @@ export default function JobSearchPage() {
     }
   }, [locationState.state, isAuthenticated]);
 
-  // Refresh applied jobs when page becomes visible (user returns from applying)
   useEffect(() => {
     const handleVisibilityChange = () => {
       if (!document.hidden) {
         fetchAppliedJobs().then(() => {
-          // Reload jobs after fetching applied jobs to apply filter
           loadJobs();
         });
       }
@@ -125,22 +206,18 @@ export default function JobSearchPage() {
 
     try {
       const response = await apiClient.get('/api/candidate/saved-jobs');
-      console.log('[JobSearchPage] Saved jobs response:', response);
       if (response.success && response.data) {
-        // Backend returns { success: true, data: [{ id, job: { id, ... } }] }
         const jobs = Array.isArray(response.data) ? response.data : [];
         const ids = new Set(
           jobs
             .map((item: { job?: { id: string }; jobId?: string }) => item.job?.id || item.jobId)
             .filter(Boolean) as string[]
         );
-        console.log('[JobSearchPage] Saved job IDs:', Array.from(ids));
         setSavedJobIds(ids);
       } else {
         setSavedJobIds(new Set());
       }
     } catch (error: any) {
-      // Silently fail for unauthenticated users (401/403 errors are expected)
       if (error?.response?.status !== 401 && error?.response?.status !== 403) {
         console.error('[JobSearchPage] Failed to fetch saved jobs:', error);
       }
@@ -152,18 +229,14 @@ export default function JobSearchPage() {
     if (!isAuthenticated) return;
 
     try {
-      // Only fetch if user is authenticated
       const response = await applicationService.getCandidateApplications();
       if (response.success && response.data?.applications) {
         const appliedIds = new Set(
-          response.data.applications.map((app: { jobId?: string }) => app.jobId).filter((id): id is string => !!id) // Ensure ids are filtered for strings only
+          response.data.applications.map((app: { jobId?: string }) => app.jobId).filter((id): id is string => !!id)
         );
-        console.log('JobSearchPage - Applied job IDs:', Array.from(appliedIds));
-        // Store applied job IDs in ref for filtering
         appliedJobIdsRef.current = appliedIds;
       }
     } catch (error: any) {
-      // Silently fail for unauthenticated users (401/403 errors are expected)
       if (error?.response?.status !== 401 && error?.response?.status !== 403) {
         console.error('Failed to fetch applied jobs:', error);
       }
@@ -171,7 +244,6 @@ export default function JobSearchPage() {
   };
 
   const trackSearch = useCallback(async (filters: Record<string, unknown>) => {
-    // Only track if user is authenticated and there's at least one filter or search query
     if (!isAuthenticated) return;
 
     const hasFilters = Object.values(filters).some(val => val !== undefined && val !== '');
@@ -183,7 +255,6 @@ export default function JobSearchPage() {
         filters,
       });
     } catch (error: any) {
-      // Silently fail for unauthenticated users (401/403 errors are expected)
       if (error?.response?.status !== 401 && error?.response?.status !== 403) {
         console.error('Failed to track search:', error);
       }
@@ -193,7 +264,6 @@ export default function JobSearchPage() {
   const toggleSaveJob = async (e: React.MouseEvent, jobId: string) => {
     e.stopPropagation();
 
-    // For unauthenticated users, prompt them to sign in
     if (!isAuthenticated) {
       toast({
         title: "Sign in required",
@@ -249,8 +319,6 @@ export default function JobSearchPage() {
   const loadFilterOptions = async () => {
     try {
       const response = await jobService.getFilterOptions();
-      // API returns { success: true, data: { data: { categories, departments, locations, companies, tags } } }
-      // apiClient unwraps once, so we get { data: { categories... } }
       const options = response.data?.data || response.data;
       setFilterOptions(options as JobFilterOptions || { categories: [], departments: [], locations: [], companies: [], tags: [] });
     } catch (error) {
@@ -282,7 +350,6 @@ export default function JobSearchPage() {
         offset: offset,
       });
 
-      // Track search automatically (only on first page)
       if (page === 1) {
         const currentFilters = {
           search: searchQuery || undefined,
@@ -298,7 +365,6 @@ export default function JobSearchPage() {
         trackSearch(currentFilters);
       }
 
-      // Filter out jobs that the candidate has already applied to
       const allJobs = response.data?.jobs || [];
       const filteredJobs = allJobs.filter((job: PublicJob) => !appliedJobIdsRef.current.has(job.id));
 
@@ -315,7 +381,6 @@ export default function JobSearchPage() {
       setTotalJobs(response.data?.total || 0);
       setCurrentPage(page);
 
-      // Determine if there's more to load from the server
       const totalAvailable = response.data?.total || 0;
       setHasMore(offset + allJobs.length < totalAvailable);
     } catch (error) {
@@ -334,12 +399,10 @@ export default function JobSearchPage() {
         if (isAuthenticated) {
           await fetchAppliedJobs();
         }
-        // Load jobs after fetching applied jobs
         isInitializedRef.current = true;
         await loadJobs();
       } catch (error) {
         console.error('Failed to initialize job search page:', error);
-        // Still try to load jobs even if filter options or applied jobs fail
         isInitializedRef.current = true;
         await loadJobs();
       }
@@ -348,7 +411,6 @@ export default function JobSearchPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Load jobs when filters change (debounced) - but not when appliedJobIds changes
   useEffect(() => {
     const timer = setTimeout(() => {
       loadJobs();
@@ -390,15 +452,6 @@ export default function JobSearchPage() {
       salaryMax ||
       featuredOnly
     );
-  };
-
-  const formatSalary = (job: PublicJob) => {
-    if (!job.salaryMin && !job.salaryMax) {
-      return job.salaryDescription || 'Salary not specified';
-    }
-    const min = job.salaryMin?.toLocaleString();
-    const max = job.salaryMax?.toLocaleString();
-    return `${job.salaryCurrency} ${min}${max ? ` - ${max}` : '+'}`;
   };
 
   const Layout = isAuthenticated ? CandidatePageLayout : PublicCandidatePageLayout;
@@ -510,7 +563,6 @@ export default function JobSearchPage() {
                     </Button>
                   )}
                 </div>
-
               </div>
 
               {/* Advanced Filters */}
@@ -640,11 +692,11 @@ export default function JobSearchPage() {
         </div>
 
         {/* Job Listings */}
-        <div className="container mx-auto px-4 py-8">
+        <div className="container mx-auto px-4 py-6">
           {isLoading && jobs.length === 0 ? (
-            <div className="space-y-4">
+            <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} className="h-48 w-full rounded-xl" />
+                <Skeleton key={i} className="h-40 w-full rounded-3xl" />
               ))}
             </div>
           ) : jobs.length === 0 ? (
@@ -663,124 +715,187 @@ export default function JobSearchPage() {
               )}
             </div>
           ) : (
-            <div className="space-y-4">
-              {jobs.map((job) => (
-                <Card
-                  key={job.id}
-                  className={cn(
-                    'hover:shadow-lg transition-all duration-200 cursor-pointer border-l-4',
-                    job.featured && 'border-l-primary bg-primary/5'
-                  )}
-                  onClick={() => navigate(`/jobs/${job.id}`)}
-                >
-                  <CardHeader>
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1 space-y-2">
-                        <div className="flex items-start gap-3">
-                          <div className="flex-1">
-                            <CardTitle className="text-xl mb-2 flex items-center gap-2">
-                              <Link
-                                to={`/jobs/${job.id}`}
-                                className="hover:text-primary transition-colors"
-                                onClick={(e) => e.stopPropagation()}
-                              >
-                                {job.title}
-                              </Link>
-                              {job.featured && (
-                                <Badge variant="default" className="ml-2">
-                                  <TrendingUp className="h-3 w-3 mr-1" />
-                                  Featured
-                                </Badge>
-                              )}
-                            </CardTitle>
-                            <CardDescription className="flex items-center gap-4 flex-wrap text-sm">
-                              <span className="flex items-center gap-1.5">
-                                <Building2 className="h-4 w-4 text-muted-foreground" />
-                                <span className="font-medium">{job.company.name}</span>
-                              </span>
-                              <span className="flex items-center gap-1.5">
-                                <MapPin className="h-4 w-4 text-muted-foreground" />
-                                {job.location}
-                              </span>
-                              {job.department && (
-                                <span className="flex items-center gap-1.5">
-                                  <Briefcase className="h-4 w-4 text-muted-foreground" />
-                                  {job.department}
-                                </span>
-                              )}
-                              <span className="flex items-center gap-1.5">
-                                <Clock className="h-4 w-4 text-muted-foreground" />
-                                {job.postingDate
-                                  ? formatDistanceToNow(new Date(job.postingDate), { addSuffix: true })
-                                  : 'Recently'}
-                              </span>
-                            </CardDescription>
-                          </div>
-                        </div>
-                      </div>
-                      {isAuthenticated && (
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className={cn(
-                            "text-muted-foreground hover:text-primary",
-                            savedJobIds.has(job.id) && "text-red-500 hover:text-red-600"
-                          )}
-                          onClick={(e) => toggleSaveJob(e, job.id)}
-                          title={savedJobIds.has(job.id) ? "Remove from saved jobs" : "Save job"}
-                        >
-                          <Heart className={cn(
-                            "h-5 w-5 transition-all",
-                            savedJobIds.has(job.id) ? "fill-current text-red-500" : "text-muted-foreground"
-                          )} />
-                        </Button>
-                      )}
-                    </div>
-                  </CardHeader>
-                  <CardContent>
-                    <p className="text-sm text-muted-foreground mb-4 line-clamp-2">
-                      {job.jobSummary || (job.description || '').substring(0, 200)}...
-                    </p>
-                    <div className="flex items-center justify-between flex-wrap gap-4">
-                      <div className="flex items-center gap-6 flex-wrap">
-                        <div className="flex items-center gap-1.5 text-sm">
-                          <DollarSign className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{formatSalary(job)}</span>
-                        </div>
-                        <Badge variant="outline" className="text-xs">
-                          {(job.employmentType || '').replace('_', ' ')}
-                        </Badge>
-                        <Badge variant="outline" className="text-xs">
-                          {(job.workArrangement || '').replace('_', ' ')}
-                        </Badge>
-                        {job.category && (
-                          <Badge variant="secondary" className="text-xs">
-                            {job.category}
-                          </Badge>
-                        )}
-                      </div>
-                      <Button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          navigate(`/jobs/${job.id}`);
-                        }}
-                        size="sm"
-                      >
-                        View Details
-                      </Button>
-                    </div>
-                    {job.promotionalTags && job.promotionalTags.length > 0 && (
-                      <div className="flex gap-2 mt-4 flex-wrap">
-                        {job.promotionalTags.map((tag, idx) => (
-                          <Badge key={idx} variant="outline" className="text-xs">
-                            {tag}
-                          </Badge>
-                        ))}
-                      </div>
+            <div className="space-y-3">
+              {jobs.map((job) => {
+                const empType = job.employmentType || job.employment_type || '';
+                const workArr = job.workArrangement || job.work_arrangement || '';
+                const jobCode = job.jobCode || job.job_code;
+                const expLevel = job.experienceLevel || job.experience_level;
+                const vacancies = job.numberOfVacancies || job.number_of_vacancies || 1;
+                const postedAt = job.postingDate || job.posting_date || job.createdAt || job.created_at;
+                const tags = job.promotionalTags || job.promotional_tags || [];
+                const locationCity = job.jobLocation?.city;
+                const locationCountry = job.jobLocation?.country;
+                const WorkArrangementIcon = getWorkArrangementIcon(workArr);
+
+                return (
+                  <Card
+                    key={job.id}
+                    className={cn(
+                      "overflow-hidden rounded-3xl border-border/70 bg-background shadow-none transition-all hover:border-primary/30 hover:bg-muted/[0.02] cursor-pointer",
+                      job.featured && "border-primary/20 bg-primary/[0.02]"
                     )}
-                  </CardContent>
-                </Card>
-              ))}
+                    onClick={() => navigate(`/jobs/${job.id}`)}
+                  >
+                    <CardContent className="p-4 md:p-5">
+                      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+                        {/* Left content */}
+                        <div className="min-w-0 flex-1 space-y-3">
+                          {/* Title row */}
+                          <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <Link
+                                  to={`/jobs/${job.id}`}
+                                  className="truncate text-base font-semibold tracking-tight text-foreground hover:text-primary transition-colors md:text-lg"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  {job.title}
+                                </Link>
+                                {jobCode && (
+                                  <span className="shrink-0 rounded-full bg-muted px-2.5 py-1 text-[10px] font-medium uppercase tracking-[0.14em] text-muted-foreground">
+                                    {jobCode}
+                                  </span>
+                                )}
+                                {job.featured && (
+                                  <Badge variant="default" className="shrink-0 text-[10px] px-2 py-0.5">
+                                    <TrendingUp className="h-3 w-3 mr-1" />
+                                    Featured
+                                  </Badge>
+                                )}
+                              </div>
+
+                              {/* Subtitle row - company, location, type, arrangement */}
+                              <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Building2 className="h-3.5 w-3.5" />
+                                  <span className="font-medium text-foreground/80">{job.company.name}</span>
+                                </span>
+                                <span className="inline-flex items-center gap-1.5">
+                                  <MapPin className="h-3.5 w-3.5" />
+                                  {job.location}
+                                  {locationCity && locationCountry && job.location !== `${locationCity}, ${locationCountry}` && (
+                                    <span className="text-muted-foreground/60">({locationCity})</span>
+                                  )}
+                                </span>
+                                {job.department && (
+                                  <span className="inline-flex items-center gap-1.5">
+                                    <Briefcase className="h-3.5 w-3.5" />
+                                    {job.department}
+                                  </span>
+                                )}
+                                <span className="inline-flex items-center gap-1.5">
+                                  <Clock className="h-3.5 w-3.5" />
+                                  {postedAt
+                                    ? formatDistanceToNow(new Date(postedAt), { addSuffix: true })
+                                    : 'Recently'}
+                                </span>
+                              </div>
+                            </div>
+
+                            {/* Save button */}
+                            {isAuthenticated && (
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className={cn(
+                                  "shrink-0 h-8 w-8 text-muted-foreground hover:text-primary",
+                                  savedJobIds.has(job.id) && "text-red-500 hover:text-red-600"
+                                )}
+                                onClick={(e) => toggleSaveJob(e, job.id)}
+                                title={savedJobIds.has(job.id) ? "Remove from saved jobs" : "Save job"}
+                              >
+                                <Heart className={cn(
+                                  "h-4 w-4 transition-all",
+                                  savedJobIds.has(job.id) ? "fill-current text-red-500" : ""
+                                )} />
+                              </Button>
+                            )}
+                          </div>
+
+                          {/* Badges row */}
+                          <div className="flex flex-wrap gap-1.5">
+                            <Badge
+                              variant={getEmploymentTypeVariant(empType) as any}
+                              className="rounded-full text-[10px] px-2.5 py-0.5"
+                            >
+                              {formatEmploymentType(empType)}
+                            </Badge>
+                            <Badge
+                              variant="outline"
+                              className={cn(
+                                "rounded-full text-[10px] px-2.5 py-0.5",
+                                workArr.toUpperCase() === 'REMOTE' && "border-emerald-200 bg-emerald-50 text-emerald-700 dark:border-emerald-900 dark:bg-emerald-950/30 dark:text-emerald-200",
+                                workArr.toUpperCase() === 'HYBRID' && "border-violet-200 bg-violet-50 text-violet-700 dark:border-violet-900 dark:bg-violet-950/30 dark:text-violet-200"
+                              )}
+                            >
+                              <WorkArrangementIcon className="h-3 w-3 mr-1" />
+                              {formatWorkArrangement(workArr)}
+                            </Badge>
+                            {expLevel && (
+                              <Badge variant="outline" className="rounded-full text-[10px] px-2.5 py-0.5 border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-900 dark:bg-sky-950/30 dark:text-sky-200">
+                                <GraduationCap className="h-3 w-3 mr-1" />
+                                {formatExperienceLevel(expLevel)}
+                              </Badge>
+                            )}
+                            {job.category && (
+                              <Badge variant="secondary" className="rounded-full text-[10px] px-2.5 py-0.5">
+                                {job.category}
+                              </Badge>
+                            )}
+                            {vacancies > 1 && (
+                              <Badge variant="outline" className="rounded-full text-[10px] px-2.5 py-0.5">
+                                <Users className="h-3 w-3 mr-1" />
+                                {vacancies} openings
+                              </Badge>
+                            )}
+                          </div>
+
+                          {/* Salary + summary row */}
+                          <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+                            <div className="flex items-center gap-4 flex-wrap">
+                              <span className="inline-flex items-center gap-1.5 text-sm font-semibold text-foreground">
+                                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                                {formatSalary(job)}
+                              </span>
+                              {tags.length > 0 && (
+                                <div className="flex gap-1 flex-wrap">
+                                  {tags.slice(0, 3).map((tag, idx) => (
+                                    <span key={idx} className="rounded-full border border-dashed border-border/70 px-2.5 py-0.5 text-[10px] text-muted-foreground">
+                                      {tag}
+                                    </span>
+                                  ))}
+                                  {tags.length > 3 && (
+                                    <span className="text-[10px] text-muted-foreground py-0.5">+{tags.length - 3} more</span>
+                                  )}
+                                </div>
+                              )}
+                            </div>
+                            <Button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                navigate(`/jobs/${job.id}`);
+                              }}
+                              size="sm"
+                              variant="outline"
+                              className="shrink-0 rounded-xl h-9 px-4 text-sm"
+                            >
+                              View Details
+                            </Button>
+                          </div>
+
+                          {/* Summary text */}
+                          {(job.jobSummary || job.job_summary || job.description) && (
+                            <p className="text-xs text-muted-foreground line-clamp-1">
+                              {job.jobSummary || job.job_summary || (job.description || '').substring(0, 200)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })}
 
               {hasMore && (
                 <div className="flex justify-center mt-8 pb-4">

@@ -8,20 +8,20 @@ const badgeVariants = cva(
   {
     variants: {
       variant: {
-        default: "border-transparent bg-primary text-primary-foreground hover:bg-primary/80",
-        secondary: "border-transparent bg-secondary text-secondary-foreground hover:bg-secondary/80",
-        destructive: "border-transparent bg-destructive text-destructive-foreground hover:bg-destructive/80",
+        default: "border-primary/25 bg-primary/10 text-primary hover:bg-primary/15",
+        secondary: "border-border/70 bg-secondary/55 text-secondary-foreground hover:bg-secondary/70",
+        destructive: "border-destructive/25 bg-destructive/10 text-destructive hover:bg-destructive/15",
         outline: "text-foreground",
 
         // Status Variants
-        success: "border-transparent bg-success text-success-foreground hover:bg-success/80",
-        warning: "border-transparent bg-warning text-warning-foreground hover:bg-warning/80",
+        success: "border-success/25 bg-success/10 text-success hover:bg-success/15",
+        warning: "border-warning/25 bg-warning/12 text-amber-700 dark:text-amber-300 hover:bg-warning/18",
 
         // Vibrant Brand Colors (Design System)
-        coral: "border-transparent bg-coral text-coral-foreground hover:bg-coral/80 shadow-sm",
-        teal: "border-transparent bg-teal text-teal-foreground hover:bg-teal/80 shadow-sm",
-        purple: "border-transparent bg-purple text-purple-foreground hover:bg-purple/80 shadow-sm",
-        orange: "border-transparent bg-orange text-orange-foreground hover:bg-orange/80 shadow-sm",
+        coral: "border-coral/20 bg-coral/12 text-coral hover:bg-coral/18",
+        teal: "border-teal/20 bg-teal/12 text-teal hover:bg-teal/18",
+        purple: "border-purple/20 bg-purple/12 text-purple hover:bg-purple/18",
+        orange: "border-orange/20 bg-orange/12 text-orange hover:bg-orange/18",
 
         // Soft Variants for subtle distinction
         "coral-soft": "border-coral/20 bg-coral/10 text-coral hover:bg-coral/20",
@@ -39,7 +39,7 @@ const badgeVariants = cva(
   },
 );
 
-export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> { }
+export interface BadgeProps extends React.HTMLAttributes<HTMLDivElement>, VariantProps<typeof badgeVariants> {}
 
 const Badge = React.forwardRef<HTMLDivElement, BadgeProps>(({ className, variant, ...props }, ref) => {
   return <div ref={ref} className={cn(badgeVariants({ variant }), className)} {...props} />;
