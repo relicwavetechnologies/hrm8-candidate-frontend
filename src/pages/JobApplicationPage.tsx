@@ -22,7 +22,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { Badge } from '@/shared/components/ui/badge';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle2, Building2, MapPin, ArrowLeft, FileUp } from 'lucide-react';
+import { Loader2, CheckCircle2, Building2, MapPin, ArrowLeft } from 'lucide-react';
 import { PublicCandidatePageLayout } from '@/shared/components/layouts/PublicCandidatePageLayout';
 import { CandidatePageLayout } from '@/shared/components/layouts/CandidatePageLayout';
 import { apiClient } from '@/shared/services/api';
