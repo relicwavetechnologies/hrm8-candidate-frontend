@@ -1,6 +1,7 @@
 /**
  * Job Application Page
  * Candidates can apply to a specific job here.
+ * Fetches and renders custom screening questions from the application form config.
  */
 
 import { useState, useEffect, useMemo } from 'react';
@@ -14,12 +15,27 @@ import { DocumentSelector } from '@/shared/components/documents/DocumentSelector
 import { Button } from '@/shared/components/ui/button';
 import { Input } from '@/shared/components/ui/input';
 import { Label } from '@/shared/components/ui/label';
+import { Textarea } from '@/shared/components/ui/textarea';
+import { RadioGroup, RadioGroupItem } from '@/shared/components/ui/radio-group';
+import { Checkbox } from '@/shared/components/ui/checkbox';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/shared/components/ui/select';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
+import { Badge } from '@/shared/components/ui/badge';
 import { toast } from 'sonner';
-import { Loader2, CheckCircle2, Building2, MapPin, ArrowLeft } from 'lucide-react';
+import { Loader2, CheckCircle2, Building2, MapPin, ArrowLeft, FileUp } from 'lucide-react';
 import { PublicCandidatePageLayout } from '@/shared/components/layouts/PublicCandidatePageLayout';
 import { CandidatePageLayout } from '@/shared/components/layouts/CandidatePageLayout';
 import { apiClient } from '@/shared/services/api';
+import type { ApplicationQuestion } from '@/shared/types/applicationForm';
+
+interface ApplicationFormData {
+    jobId: string;
+    jobTitle: string;
+    questions: ApplicationQuestion[];
+    requireResume: boolean;
+    requireCoverLetter: boolean;
+    requirePortfolio: boolean;
+}
 
 export default function JobApplicationPage() {
     const { id } = useParams<{ id: string }>();
@@ -31,6 +47,11 @@ export default function JobApplicationPage() {
     const [job, setJob] = useState<PublicJob | null>(null);
     const [loading, setLoading] = useState(true);
     const [submitting, setSubmitting] = useState(false);
+
+    // Application form config
+    const [appFormConfig, setAppFormConfig] = useState<ApplicationFormData | null>(null);
+    const [customAnswers, setCustomAnswers] = useState<Record<string, string | string[]>>({});
+    const [fileAnswers, setFileAnswers] = useState<Record<string, File>>({});
 
     // Document selection state
     const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null);
@@ -81,11 +102,11 @@ export default function JobApplicationPage() {
     useEffect(() => {
         if (id) {
             loadJob(id);
+            loadApplicationForm(id);
         }
     }, [id, invitationToken]);
 
     useEffect(() => {
-        // Pre-fill form if authenticated
         if (isAuthenticated && candidate) {
             setFormData(prev => ({
                 ...prev,
@@ -123,9 +144,46 @@ export default function JobApplicationPage() {
         }
     };
 
+    const loadApplicationForm = async (jobId: string) => {
+        try {
+            const response = await jobService.getApplicationForm(jobId);
+            if (response.success && response.data) {
+                const data = response.data as any;
+                // Backend returns { form: { jobId, jobTitle, questions, requireResume, ... } }
+                // jobService.getApplicationForm unwraps `form` if present
+                const formData: ApplicationFormData = {
+                    jobId: data.jobId || jobId,
+                    jobTitle: data.jobTitle || '',
+                    questions: Array.isArray(data.questions) ? data.questions : [],
+                    requireResume: data.requireResume !== false,
+                    requireCoverLetter: data.requireCoverLetter === true,
+                    requirePortfolio: data.requirePortfolio === true,
+                };
+                setAppFormConfig(formData);
+            }
+        } catch (error) {
+            console.error("Failed to load application form:", error);
+            // Non-critical - form will work without custom questions
+        }
+    };
+
     const handleInputChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target;
         setFormData(prev => ({ ...prev, [name]: value }));
+    };
+
+    const updateAnswer = (questionId: string, value: string | string[]) => {
+        setCustomAnswers(prev => ({ ...prev, [questionId]: value }));
+    };
+
+    const toggleCheckboxAnswer = (questionId: string, optionValue: string) => {
+        setCustomAnswers(prev => {
+            const current = Array.isArray(prev[questionId]) ? prev[questionId] as string[] : [];
+            const updated = current.includes(optionValue)
+                ? current.filter(v => v !== optionValue)
+                : [...current, optionValue];
+            return { ...prev, [questionId]: updated };
+        });
     };
 
     const uploadFile = async (file: File, type: 'resume' | 'cover_letter') => {
@@ -141,22 +199,93 @@ export default function JobApplicationPage() {
         throw new Error('Upload failed');
     };
 
+    const sortedQuestions = useMemo(() => {
+        if (!appFormConfig?.questions?.length) return [];
+        return [...appFormConfig.questions].sort((a, b) => (a.order ?? 0) - (b.order ?? 0));
+    }, [appFormConfig]);
+
+    const validateCustomAnswers = (): boolean => {
+        for (const q of sortedQuestions) {
+            if (!q.required) continue;
+            const answer = customAnswers[q.id];
+
+            if (q.type === 'file_upload') {
+                if (!fileAnswers[q.id]) {
+                    toast.error(`Please upload a file for "${q.label}"`);
+                    return false;
+                }
+                continue;
+            }
+
+            if (!answer || (Array.isArray(answer) && answer.length === 0) || (typeof answer === 'string' && !answer.trim())) {
+                toast.error(`Please answer the required question: "${q.label}"`);
+                return false;
+            }
+
+            // Validation rules
+            if (q.validation) {
+                if (typeof answer === 'string') {
+                    if (q.validation.minLength && answer.length < q.validation.minLength) {
+                        toast.error(`"${q.label}" requires at least ${q.validation.minLength} characters`);
+                        return false;
+                    }
+                    if (q.validation.maxLength && answer.length > q.validation.maxLength) {
+                        toast.error(`"${q.label}" cannot exceed ${q.validation.maxLength} characters`);
+                        return false;
+                    }
+                }
+                if (q.type === 'number' && typeof answer === 'string') {
+                    const num = parseFloat(answer);
+                    if (q.validation.minValue !== undefined && num < q.validation.minValue) {
+                        toast.error(`"${q.label}" must be at least ${q.validation.minValue}`);
+                        return false;
+                    }
+                    if (q.validation.maxValue !== undefined && num > q.validation.maxValue) {
+                        toast.error(`"${q.label}" cannot exceed ${q.validation.maxValue}`);
+                        return false;
+                    }
+                }
+            }
+        }
+        return true;
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!job || !id) return;
 
-        // Basic validation
         if (!formData.firstName || !formData.lastName || !formData.email) {
             toast.error("Please fill in all required fields");
             return;
         }
 
-        if (!selectedResumeId && !resumeFile) {
+        const requireResume = appFormConfig?.requireResume !== false;
+        if (requireResume && !selectedResumeId && !resumeFile) {
             toast.error("Please select or upload a resume");
             return;
         }
 
+        if (appFormConfig?.requireCoverLetter && !selectedCoverLetterId && !coverLetterFile) {
+            toast.error("Please provide a cover letter");
+            return;
+        }
+
+        if (appFormConfig?.requirePortfolio && !selectedPortfolioId && !portfolioFile && !portfolioUrl) {
+            toast.error("Please provide a portfolio");
+            return;
+        }
+
+        if (!validateCustomAnswers()) return;
+
         setSubmitting(true);
+
+        // Build custom answers array for submission
+        const answersPayload = sortedQuestions
+            .filter(q => customAnswers[q.id] !== undefined)
+            .map(q => ({
+                questionId: q.id,
+                answer: customAnswers[q.id],
+            }));
 
         // Guest Application Flow
         if (!isAuthenticated) {
@@ -196,7 +325,6 @@ export default function JobApplicationPage() {
             let coverLetterUrl: string | undefined;
             let portfolioUrlFinal: string | undefined;
 
-            // Handle Resume
             if (resumeFile) {
                 try {
                     resumeUrl = await uploadFile(resumeFile, 'resume');
@@ -214,7 +342,6 @@ export default function JobApplicationPage() {
                 }
             }
 
-            // Handle Cover Letter
             if (coverLetterFile) {
                 try {
                     coverLetterUrl = await uploadFile(coverLetterFile, 'cover_letter');
@@ -230,13 +357,12 @@ export default function JobApplicationPage() {
                 }
             }
 
-            // Handle Portfolio
             if (portfolioFile) {
                 try {
-                    const formData = new FormData();
-                    formData.append('file', portfolioFile);
-                    formData.append('type', 'portfolio');
-                    const response = await apiClient.upload<{ url: string }>('/api/upload', formData);
+                    const fd = new FormData();
+                    fd.append('file', portfolioFile);
+                    fd.append('type', 'portfolio');
+                    const response = await apiClient.upload<{ url: string }>('/api/upload', fd);
                     if (response.success && response.data?.url) {
                         portfolioUrlFinal = response.data.url;
                     }
@@ -266,6 +392,7 @@ export default function JobApplicationPage() {
                 invitationToken,
                 jobTargetAttribution,
                 applicationSource: 'CANDIDATE_PORTAL' as const,
+                customAnswers: answersPayload.length > 0 ? answersPayload : undefined,
             };
 
             const response = await applicationService.submitApplication(applicationData);
@@ -295,6 +422,10 @@ export default function JobApplicationPage() {
     }
 
     if (!job) return null;
+
+    const requireResume = appFormConfig?.requireResume !== false;
+    const requireCoverLetter = appFormConfig?.requireCoverLetter === true;
+    const requirePortfolio = appFormConfig?.requirePortfolio === true;
 
     return (
         <Layout showSidebarTrigger={false}>
@@ -369,7 +500,7 @@ export default function JobApplicationPage() {
                                 <>
                                     <DocumentSelector
                                         type="resume"
-                                        required
+                                        required={requireResume}
                                         selectedId={selectedResumeId}
                                         onSelect={(id, file) => {
                                             setSelectedResumeId(id);
@@ -379,40 +510,46 @@ export default function JobApplicationPage() {
 
                                     <DocumentSelector
                                         type="cover-letter"
+                                        required={requireCoverLetter}
                                         selectedId={selectedCoverLetterId}
                                         onSelect={(id, file) => {
                                             setSelectedCoverLetterId(id);
                                             if (file) setCoverLetterFile(file);
                                         }}
-                                        description="Optional, but recommended"
+                                        description={requireCoverLetter ? "Required for this position" : "Optional, but recommended"}
                                     />
 
                                     <DocumentSelector
                                         type="portfolio"
+                                        required={requirePortfolio}
                                         selectedId={selectedPortfolioId}
                                         onSelect={(id, file, url) => {
                                             setSelectedPortfolioId(id);
                                             if (file) setPortfolioFile(file);
                                             if (url) setPortfolioUrl(url);
                                         }}
-                                        description="Share your work samples or project links"
+                                        description={requirePortfolio ? "Required for this position" : "Share your work samples or project links"}
                                     />
                                 </>
                             ) : (
                                 <div className="space-y-6">
                                     <div className="space-y-2">
-                                        <Label htmlFor="resume-upload">Resume *</Label>
+                                        <Label htmlFor="resume-upload">
+                                            Resume {requireResume && <span className="text-destructive">*</span>}
+                                        </Label>
                                         <Input
                                             id="resume-upload"
                                             type="file"
                                             accept=".pdf,.doc,.docx"
                                             onChange={(e) => setResumeFile(e.target.files?.[0] || null)}
-                                            required
+                                            required={requireResume}
                                         />
                                         <p className="text-xs text-muted-foreground">PDF or Word document up to 5MB</p>
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="cl-upload">Cover Letter (Optional)</Label>
+                                        <Label htmlFor="cl-upload">
+                                            Cover Letter {requireCoverLetter ? <span className="text-destructive">*</span> : '(Optional)'}
+                                        </Label>
                                         <Input
                                             id="cl-upload"
                                             type="file"
@@ -421,7 +558,9 @@ export default function JobApplicationPage() {
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="portfolio-upload">Portfolio (Optional)</Label>
+                                        <Label htmlFor="portfolio-upload">
+                                            Portfolio {requirePortfolio ? <span className="text-destructive">*</span> : '(Optional)'}
+                                        </Label>
                                         <Input
                                             id="portfolio-upload"
                                             type="file"
@@ -437,6 +576,190 @@ export default function JobApplicationPage() {
                             )}
                         </CardContent>
                     </Card>
+
+                    {/* Screening / Custom Questions */}
+                    {sortedQuestions.length > 0 && (
+                        <Card>
+                            <CardHeader>
+                                <CardTitle>Screening Questions</CardTitle>
+                                <CardDescription>Please answer the following questions from the hiring team.</CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                {sortedQuestions.map((question) => (
+                                    <div key={question.id} className="space-y-2">
+                                        <div className="flex items-start gap-2">
+                                            <Label className="flex-1 text-sm font-medium">
+                                                {question.label}
+                                                {question.required && (
+                                                    <span className="text-destructive ml-1">*</span>
+                                                )}
+                                            </Label>
+                                            <Badge variant="outline" className="text-[10px] shrink-0">
+                                                {questionTypeLabel(question.type)}
+                                            </Badge>
+                                        </div>
+
+                                        {question.description && (
+                                            <p className="text-sm text-muted-foreground">
+                                                {question.description}
+                                            </p>
+                                        )}
+
+                                        {/* Short text */}
+                                        {question.type === 'short_text' && (
+                                            <Input
+                                                placeholder="Your answer..."
+                                                value={(customAnswers[question.id] as string) || ''}
+                                                onChange={(e) => updateAnswer(question.id, e.target.value)}
+                                                maxLength={question.validation?.maxLength}
+                                            />
+                                        )}
+
+                                        {/* Long text */}
+                                        {question.type === 'long_text' && (
+                                            <Textarea
+                                                placeholder="Your answer..."
+                                                rows={4}
+                                                value={(customAnswers[question.id] as string) || ''}
+                                                onChange={(e) => updateAnswer(question.id, e.target.value)}
+                                                maxLength={question.validation?.maxLength}
+                                            />
+                                        )}
+
+                                        {/* Multiple choice (single select) */}
+                                        {question.type === 'multiple_choice' && question.options && (
+                                            <RadioGroup
+                                                value={(customAnswers[question.id] as string) || ''}
+                                                onValueChange={(value) => updateAnswer(question.id, value)}
+                                            >
+                                                {question.options.map((option) => (
+                                                    <div key={option.id} className="flex items-center space-x-2">
+                                                        <RadioGroupItem value={option.value} id={`${question.id}-${option.id}`} />
+                                                        <Label htmlFor={`${question.id}-${option.id}`} className="font-normal cursor-pointer">
+                                                            {option.label}
+                                                        </Label>
+                                                    </div>
+                                                ))}
+                                            </RadioGroup>
+                                        )}
+
+                                        {/* Checkbox (multi-select) */}
+                                        {question.type === 'checkbox' && question.options && (
+                                            <div className="space-y-2">
+                                                {question.options.map((option) => {
+                                                    const selected = Array.isArray(customAnswers[question.id])
+                                                        ? (customAnswers[question.id] as string[]).includes(option.value)
+                                                        : false;
+                                                    return (
+                                                        <div key={option.id} className="flex items-center space-x-2">
+                                                            <Checkbox
+                                                                id={`${question.id}-${option.id}`}
+                                                                checked={selected}
+                                                                onCheckedChange={() => toggleCheckboxAnswer(question.id, option.value)}
+                                                            />
+                                                            <Label htmlFor={`${question.id}-${option.id}`} className="font-normal cursor-pointer">
+                                                                {option.label}
+                                                            </Label>
+                                                        </div>
+                                                    );
+                                                })}
+                                            </div>
+                                        )}
+
+                                        {/* Dropdown */}
+                                        {question.type === 'dropdown' && question.options && (
+                                            <Select
+                                                value={(customAnswers[question.id] as string) || undefined}
+                                                onValueChange={(value) => updateAnswer(question.id, value)}
+                                            >
+                                                <SelectTrigger>
+                                                    <SelectValue placeholder="Select an option..." />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    {question.options.map((option) => (
+                                                        <SelectItem key={option.id} value={option.value}>
+                                                            {option.label}
+                                                        </SelectItem>
+                                                    ))}
+                                                </SelectContent>
+                                            </Select>
+                                        )}
+
+                                        {/* Yes / No */}
+                                        {question.type === 'yes_no' && (
+                                            <RadioGroup
+                                                value={(customAnswers[question.id] as string) || ''}
+                                                onValueChange={(value) => updateAnswer(question.id, value)}
+                                            >
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="yes" id={`${question.id}-yes`} />
+                                                    <Label htmlFor={`${question.id}-yes`} className="font-normal cursor-pointer">Yes</Label>
+                                                </div>
+                                                <div className="flex items-center space-x-2">
+                                                    <RadioGroupItem value="no" id={`${question.id}-no`} />
+                                                    <Label htmlFor={`${question.id}-no`} className="font-normal cursor-pointer">No</Label>
+                                                </div>
+                                            </RadioGroup>
+                                        )}
+
+                                        {/* Number */}
+                                        {question.type === 'number' && (
+                                            <Input
+                                                type="number"
+                                                placeholder="Enter a number..."
+                                                value={(customAnswers[question.id] as string) || ''}
+                                                onChange={(e) => updateAnswer(question.id, e.target.value)}
+                                                min={question.validation?.minValue}
+                                                max={question.validation?.maxValue}
+                                            />
+                                        )}
+
+                                        {/* Date */}
+                                        {question.type === 'date' && (
+                                            <Input
+                                                type="date"
+                                                value={(customAnswers[question.id] as string) || ''}
+                                                onChange={(e) => updateAnswer(question.id, e.target.value)}
+                                            />
+                                        )}
+
+                                        {/* File upload */}
+                                        {question.type === 'file_upload' && (
+                                            <div>
+                                                <Input
+                                                    type="file"
+                                                    accept={question.validation?.fileTypes?.map(t => `.${t}`).join(',') || '.pdf,.doc,.docx,.jpg,.png'}
+                                                    onChange={(e) => {
+                                                        const file = e.target.files?.[0];
+                                                        if (file) {
+                                                            setFileAnswers(prev => ({ ...prev, [question.id]: file }));
+                                                            updateAnswer(question.id, file.name);
+                                                        }
+                                                    }}
+                                                />
+                                                {question.validation?.fileTypes && (
+                                                    <p className="text-xs text-muted-foreground mt-1">
+                                                        Accepted: {question.validation.fileTypes.join(', ').toUpperCase()}
+                                                        {question.validation.maxFileSize && ` (max ${question.validation.maxFileSize}MB)`}
+                                                    </p>
+                                                )}
+                                            </div>
+                                        )}
+
+                                        {/* Validation hints */}
+                                        {question.validation && question.type !== 'file_upload' && (
+                                            <p className="text-xs text-muted-foreground">
+                                                {question.validation.minLength ? `Min ${question.validation.minLength} characters. ` : ''}
+                                                {question.validation.maxLength ? `Max ${question.validation.maxLength} characters. ` : ''}
+                                                {question.validation.minValue !== undefined ? `Min value: ${question.validation.minValue}. ` : ''}
+                                                {question.validation.maxValue !== undefined ? `Max value: ${question.validation.maxValue}.` : ''}
+                                            </p>
+                                        )}
+                                    </div>
+                                ))}
+                            </CardContent>
+                        </Card>
+                    )}
 
                     <Card>
                         <CardHeader>
@@ -473,4 +796,19 @@ export default function JobApplicationPage() {
             </div>
         </Layout>
     );
+}
+
+function questionTypeLabel(type: string): string {
+    const labels: Record<string, string> = {
+        'short_text': 'Short Answer',
+        'long_text': 'Long Answer',
+        'multiple_choice': 'Multiple Choice',
+        'checkbox': 'Multi-Select',
+        'dropdown': 'Dropdown',
+        'file_upload': 'File Upload',
+        'date': 'Date',
+        'yes_no': 'Yes / No',
+        'number': 'Number',
+    };
+    return labels[type] || type;
 }
