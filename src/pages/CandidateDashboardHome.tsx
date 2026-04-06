@@ -25,10 +25,15 @@ import {
   MapPin,
   Calendar,
   ExternalLink,
+  CalendarCheck,
+  CalendarClock,
+  Clock,
+  Send,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { useToast } from '@/shared/hooks/use-toast';
+import { cn } from '@/shared/lib/utils';
 
 export default function CandidateDashboardHome() {
   const { candidate } = useCandidateAuth();
@@ -40,6 +45,8 @@ export default function CandidateDashboardHome() {
   const [loadingJobs, setLoadingJobs] = useState(false);
   const [upcomingInterviews, setUpcomingInterviews] = useState<any[]>([]);
   const [loadingInterviews, setLoadingInterviews] = useState(false);
+  const [schedulingSessions, setSchedulingSessions] = useState<any[]>([]);
+  const [loadingSessions, setLoadingSessions] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
@@ -47,6 +54,7 @@ export default function CandidateDashboardHome() {
     loadNotifications();
     loadRecommendedJobs();
     loadUpcomingInterviews();
+    loadSchedulingSessions();
     calculateProfileCompleteness();
   }, [candidate]);
 
@@ -79,6 +87,22 @@ export default function CandidateDashboardHome() {
       console.error('Failed to load upcoming interviews:', error);
     } finally {
       setLoadingInterviews(false);
+    }
+  };
+
+  const loadSchedulingSessions = async () => {
+    if (!candidate) return;
+    setLoadingSessions(true);
+    try {
+      const { apiClient } = await import('@/shared/services/api');
+      const response = await apiClient.get<any>('/api/candidate/scheduling-sessions');
+      if (response.success && response.data) {
+        setSchedulingSessions(response.data.sessions || []);
+      }
+    } catch (error) {
+      console.error('Failed to load scheduling sessions:', error);
+    } finally {
+      setLoadingSessions(false);
     }
   };
 
@@ -285,6 +309,79 @@ export default function CandidateDashboardHome() {
             </CardContent>
           </Card>
         </div>
+
+        {/* Scheduling Actions Required */}
+        {!loadingSessions && schedulingSessions.length > 0 && (
+          <Card className="overflow-hidden border-2 border-primary/30 shadow-sm">
+            <CardHeader className="py-4 px-6 border-b bg-primary/[0.03]">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-primary/60 mb-1">Action Required</p>
+                  <CardTitle className="text-base font-bold tracking-tight text-foreground/90">Interview Scheduling</CardTitle>
+                </div>
+                <Badge variant="outline" className="rounded-full text-[10px] px-2.5 border-primary/20 bg-primary/10 text-primary animate-pulse">
+                  {schedulingSessions.length} pending
+                </Badge>
+              </div>
+            </CardHeader>
+            <CardContent className="p-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                {schedulingSessions.map((session: any) => {
+                  const isBooking = session.mode === 'BOOKING_LINK';
+                  const expiresAt = session.expiresAt ? new Date(session.expiresAt) : null;
+                  const isExpiringSoon = expiresAt && (expiresAt.getTime() - Date.now()) < 48 * 60 * 60 * 1000;
+
+                  return (
+                    <div
+                      key={session.id}
+                      className={cn(
+                        "rounded-2xl border p-4 space-y-2.5 transition-colors",
+                        isExpiringSoon
+                          ? "border-amber-200 bg-amber-50/30 dark:border-amber-900 dark:bg-amber-950/10"
+                          : "border-border/60 hover:bg-muted/20"
+                      )}
+                    >
+                      <div className="flex items-start gap-3">
+                        <div className={cn(
+                          "w-9 h-9 rounded-xl flex items-center justify-center shrink-0",
+                          isBooking ? "bg-primary/10 text-primary" : "bg-violet-100 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400"
+                        )}>
+                          {isBooking ? <CalendarCheck className="h-4 w-4" /> : <CalendarClock className="h-4 w-4" />}
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <h4 className="text-sm font-bold truncate">{session.jobTitle}</h4>
+                          <p className="text-xs text-muted-foreground truncate">{session.companyName}{session.roundName ? ` · ${session.roundName}` : ''}</p>
+                        </div>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        {isBooking
+                          ? `${session.offeredSlotCount} slot${session.offeredSlotCount !== 1 ? 's' : ''} available — pick one`
+                          : 'Submit your available times'}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        {session.publicUrl && (
+                          <Button size="sm" className="rounded-xl text-xs gap-1.5 flex-1" onClick={() => window.open(session.publicUrl, '_blank')}>
+                            {isBooking ? <CalendarCheck className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />}
+                            {isBooking ? 'Choose Slot' : 'Submit Availability'}
+                          </Button>
+                        )}
+                        {expiresAt && (
+                          <span className={cn(
+                            "text-[10px] shrink-0 inline-flex items-center gap-1",
+                            isExpiringSoon ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground"
+                          )}>
+                            <Clock className="h-3 w-3" />
+                            {formatDistanceToNow(expiresAt, { addSuffix: true })}
+                          </span>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Upcoming Interviews */}
         <Card className="overflow-hidden border-border/40 shadow-sm">

@@ -65,6 +65,9 @@ import {
   Award,
   TrendingUp,
   Play,
+  CalendarClock,
+  CalendarCheck,
+  Send,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useToast } from '@/shared/hooks/use-toast';
@@ -200,10 +203,27 @@ interface AssessmentData {
   };
 }
 
+interface SchedulingSessionData {
+  id: string;
+  applicationId: string;
+  jobTitle: string;
+  companyName: string;
+  mode: 'BOOKING_LINK' | 'REQUEST_AVAILABILITY' | 'MANUAL';
+  status: string;
+  roundName?: string | null;
+  schedulingTimezone?: string;
+  offeredSlotCount: number;
+  expiresAt?: string | null;
+  publicUrl?: string | null;
+  hasActiveToken: boolean;
+  createdAt: string;
+}
+
 interface ApplicationWithDetails extends Application {
   jobDetails?: JobDetails;
   interviews?: InterviewData[];
   assessments?: AssessmentData[];
+  schedulingSessions?: SchedulingSessionData[];
   detailsLoaded?: boolean;
   screeningStatus?: string;
   screening_status?: string;
@@ -308,11 +328,12 @@ export default function ApplicationsPage() {
           } catch { return { success: false, data: null }; }
         };
 
-        const [response, formResponse, interviewsRes, assessmentsRes] = await Promise.allSettled([
+        const [response, formResponse, interviewsRes, assessmentsRes, schedulingRes] = await Promise.allSettled([
           applicationService.getApplication(app.id),
           jobService.getApplicationForm(app.jobId),
           safeFetch(`/api/applications/${app.id}/interviews`),
           safeFetch(`/api/assessments/application/${app.id}`),
+          safeFetch(`/api/candidate/scheduling-sessions`),
         ]);
 
         // Build question label map from form
@@ -341,6 +362,14 @@ export default function ApplicationsPage() {
           if (!Array.isArray(assessments)) assessments = [];
         }
 
+        // Extract scheduling sessions for this application
+        let schedulingSessions: SchedulingSessionData[] = [];
+        if (schedulingRes.status === 'fulfilled' && schedulingRes.value.success && schedulingRes.value.data) {
+          const data = schedulingRes.value.data as any;
+          const allSessions: SchedulingSessionData[] = data.sessions || data.data?.sessions || [];
+          schedulingSessions = allSessions.filter(s => s.applicationId === app.id);
+        }
+
         if (response.status === 'fulfilled' && response.value.data?.application) {
           const fullApp = response.value.data.application;
           // Also check if fullApp has interviews/assessments nested
@@ -361,6 +390,7 @@ export default function ApplicationsPage() {
             customAnswers: enrichedAnswers,
             interviews: interviews.length > 0 ? interviews : app.interviews,
             assessments: assessments.length > 0 ? assessments : app.assessments,
+            schedulingSessions: schedulingSessions.length > 0 ? schedulingSessions : app.schedulingSessions,
             detailsLoaded: true,
             currentJobRoundId: (fullApp as any).currentJobRoundId || (fullApp as any).current_job_round_id || app.currentJobRoundId,
             jobRounds: updatedJobRounds.length > 0 ? updatedJobRounds : app.jobRounds,
@@ -1200,6 +1230,94 @@ export default function ApplicationsPage() {
                       )}
                     </div>
                   </div>
+
+                  {/* ── Action Required: Scheduling Sessions ── */}
+                  {selectedApp.schedulingSessions && selectedApp.schedulingSessions.length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">
+                          Action Required
+                        </p>
+                        <div className="space-y-3">
+                          {selectedApp.schedulingSessions.map((session) => {
+                            const isBooking = session.mode === 'BOOKING_LINK';
+                            const isAvailability = session.mode === 'REQUEST_AVAILABILITY';
+                            const expiresAt = session.expiresAt ? new Date(session.expiresAt) : null;
+                            const isExpiringSoon = expiresAt && (expiresAt.getTime() - Date.now()) < 48 * 60 * 60 * 1000;
+
+                            return (
+                              <div
+                                key={session.id}
+                                className={cn(
+                                  "rounded-2xl border-2 p-4 space-y-3 transition-colors",
+                                  isExpiringSoon
+                                    ? "border-amber-300 bg-amber-50/50 dark:border-amber-800 dark:bg-amber-950/20"
+                                    : "border-primary/30 bg-primary/[0.03] dark:border-primary/20 dark:bg-primary/[0.05]"
+                                )}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2.5">
+                                    <div className={cn(
+                                      "w-9 h-9 rounded-xl flex items-center justify-center",
+                                      isBooking
+                                        ? "bg-primary/10 text-primary"
+                                        : "bg-violet-100 text-violet-600 dark:bg-violet-950/30 dark:text-violet-400"
+                                    )}>
+                                      {isBooking ? <CalendarCheck className="h-4.5 w-4.5" /> : <CalendarClock className="h-4.5 w-4.5" />}
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-semibold">
+                                        {isBooking ? 'Pick an Interview Slot' : isAvailability ? 'Submit Your Availability' : 'Interview Scheduling'}
+                                      </p>
+                                      {session.roundName && (
+                                        <p className="text-[11px] text-muted-foreground">For: {session.roundName}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  <Badge variant="outline" className={cn(
+                                    "rounded-full text-[10px] px-2.5 py-0.5",
+                                    "border-primary/20 bg-primary/10 text-primary animate-pulse"
+                                  )}>
+                                    Action needed
+                                  </Badge>
+                                </div>
+
+                                <p className="text-xs text-muted-foreground leading-relaxed">
+                                  {isBooking
+                                    ? `The hiring team has offered ${session.offeredSlotCount} time slot${session.offeredSlotCount !== 1 ? 's' : ''} for your interview. Please select the one that works best for you.`
+                                    : 'The hiring team has requested your availability. Please submit your preferred time windows so they can schedule your interview.'}
+                                </p>
+
+                                <div className="flex items-center gap-3 flex-wrap">
+                                  {session.publicUrl && (
+                                    <Button
+                                      size="sm"
+                                      className="rounded-xl gap-2"
+                                      onClick={() => safeOpenExternal(session.publicUrl!)}
+                                    >
+                                      {isBooking ? <CalendarCheck className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />}
+                                      {isBooking ? 'Choose a Slot' : 'Submit Availability'}
+                                    </Button>
+                                  )}
+                                  {expiresAt && (
+                                    <span className={cn(
+                                      "text-[11px] inline-flex items-center gap-1",
+                                      isExpiringSoon ? "text-amber-600 dark:text-amber-400 font-medium" : "text-muted-foreground"
+                                    )}>
+                                      <Clock className="h-3 w-3" />
+                                      {isExpiringSoon ? 'Expires soon · ' : 'Expires '}
+                                      {formatDistanceToNow(expiresAt, { addSuffix: true })}
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
 
                   {/* ── Interviews ── */}
                   {selectedApp.interviews && selectedApp.interviews.length > 0 && (
