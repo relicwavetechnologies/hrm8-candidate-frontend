@@ -297,12 +297,27 @@ export default function ApplicationsPage() {
     if (!app.detailsLoaded) {
       setLoadingDetail(true);
       try {
-        // Fetch application detail, form questions, interviews, and assessments in parallel
+        // Fetch application detail and form questions (authenticated)
+        // Interviews & assessments are fetched with raw fetch to avoid 401 triggering logout
+        const apiBase = import.meta.env.VITE_API_URL || '';
+        const safeFetch = async (url: string) => {
+          try {
+            const token = localStorage.getItem('token') || localStorage.getItem('auth_token');
+            const res = await fetch(`${apiBase}${url}`, {
+              headers: token ? { Authorization: `Bearer ${token}` } : {},
+              credentials: 'include',
+            });
+            if (!res.ok) return { success: false, data: null };
+            const data = await res.json();
+            return { success: true, data };
+          } catch { return { success: false, data: null }; }
+        };
+
         const [response, formResponse, interviewsRes, assessmentsRes] = await Promise.allSettled([
           applicationService.getApplication(app.id),
           jobService.getApplicationForm(app.jobId),
-          apiClient.get<{ interviews: InterviewData[] }>(`/api/applications/${app.id}/interviews`),
-          apiClient.get<{ assessments: AssessmentData[] }>(`/api/assessments/application/${app.id}`),
+          safeFetch(`/api/applications/${app.id}/interviews`),
+          safeFetch(`/api/assessments/application/${app.id}`),
         ]);
 
         // Build question label map from form
@@ -315,19 +330,19 @@ export default function ApplicationsPage() {
           }
         }
 
-        // Extract interviews
+        // Extract interviews (safe - won't trigger logout on 401)
         let interviews: InterviewData[] = [];
         if (interviewsRes.status === 'fulfilled' && interviewsRes.value.success && interviewsRes.value.data) {
           const data = interviewsRes.value.data as any;
-          interviews = data.interviews || data || [];
+          interviews = data.interviews || data.data?.interviews || [];
           if (!Array.isArray(interviews)) interviews = [];
         }
 
-        // Extract assessments
+        // Extract assessments (safe - won't trigger logout on 401)
         let assessments: AssessmentData[] = [];
         if (assessmentsRes.status === 'fulfilled' && assessmentsRes.value.success && assessmentsRes.value.data) {
           const data = assessmentsRes.value.data as any;
-          assessments = data.assessments || data || [];
+          assessments = data.assessments || data.data?.assessments || [];
           if (!Array.isArray(assessments)) assessments = [];
         }
 
