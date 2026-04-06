@@ -66,14 +66,14 @@ export default function LoginPage() {
   }
 
   return (
-    <Card className="border-none shadow-none bg-transparent">
-      <CardHeader className="space-y-1 pb-4 px-0">
-        <CardTitle className="text-2xl font-bold tracking-tight">Candidate Sign In</CardTitle>
+    <Card className="border-border/70 bg-background/95 shadow-sm backdrop-blur">
+      <CardHeader className="space-y-2">
+        <CardTitle className="text-3xl font-bold tracking-tight">Candidate sign in</CardTitle>
         <CardDescription>
-          Enter your email to access your account
+          Open your dashboard, review applications, and continue your hiring journey in one place.
         </CardDescription>
       </CardHeader>
-      <CardContent className="px-0">
+      <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="space-y-2">
             <Label htmlFor="email">Email</Label>
@@ -106,11 +106,11 @@ export default function LoginPage() {
           </div>
           <Button type="submit" className="w-full" disabled={isLoading}>
             {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-            Sign In
+            Continue
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex flex-col space-y-4 px-0 pt-4">
+      <CardFooter className="flex flex-col space-y-4 pt-2">
         <div className="text-sm text-center text-muted-foreground">
           Don't have an account?{' '}
           <Link to="/register" className="text-primary hover:underline font-medium">

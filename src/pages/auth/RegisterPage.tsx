@@ -76,8 +76,8 @@ export default function RegisterPage() {
 
   if (isSuccess) {
     return (
-      <Card className="border-none shadow-none bg-transparent">
-        <CardContent className="pt-6 px-0 text-center space-y-4">
+      <Card className="border-border/70 bg-background/95 shadow-sm backdrop-blur">
+        <CardContent className="pt-6 text-center space-y-4">
           <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
             <MailCheck className="h-8 w-8 text-primary" />
           </div>
@@ -99,14 +99,14 @@ export default function RegisterPage() {
   }
 
   return (
-    <Card className="border-none shadow-none bg-transparent">
-      <CardHeader className="space-y-1 pb-4 px-0">
-        <CardTitle className="text-2xl font-bold tracking-tight">Create your account</CardTitle>
+    <Card className="border-border/70 bg-background/95 shadow-sm backdrop-blur">
+      <CardHeader className="space-y-2">
+        <CardTitle className="text-3xl font-bold tracking-tight">Create your account</CardTitle>
         <CardDescription>
-          Join HRM8 to start your career journey
+          Build your candidate profile once, then use it across applications, updates, and interview steps.
         </CardDescription>
       </CardHeader>
-      <CardContent className="px-0">
+      <CardContent>
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
           <div className="grid grid-cols-2 gap-4">
             <div className="space-y-2">
@@ -171,7 +171,7 @@ export default function RegisterPage() {
           </Button>
         </form>
       </CardContent>
-      <CardFooter className="flex flex-col space-y-4 px-0 pt-4">
+      <CardFooter className="flex flex-col space-y-4 pt-2">
         <div className="text-sm text-center text-muted-foreground">
           Already have an account?{' '}
           <Link to="/login" className="text-primary hover:underline font-medium">
