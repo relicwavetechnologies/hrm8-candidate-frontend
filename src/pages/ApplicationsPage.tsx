@@ -1388,17 +1388,69 @@ export default function ApplicationsPage() {
                   )}
 
                   {/* ── Recruiter Notes ── */}
-                  {selectedApp.recruiterNotes && (
-                    <>
-                      <Separator />
-                      <div>
-                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Recruiter Notes</p>
-                        <div className="rounded-2xl border border-border/70 bg-muted/[0.24] p-4">
-                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedApp.recruiterNotes}</p>
+                  {selectedApp.recruiterNotes && (() => {
+                    // Parse notes — could be a JSON array of note objects or a plain string
+                    let notes: Array<{ id?: string; content?: string; createdAt?: string; metadata?: { kind?: string; decision?: string; roundKey?: string }; author?: { name?: string } }> = [];
+                    try {
+                      const raw = typeof selectedApp.recruiterNotes === 'string'
+                        ? JSON.parse(selectedApp.recruiterNotes)
+                        : selectedApp.recruiterNotes;
+                      if (Array.isArray(raw)) notes = raw;
+                    } catch {
+                      // Plain string fallback
+                      notes = [{ content: String(selectedApp.recruiterNotes) }];
+                    }
+                    if (notes.length === 0) return null;
+
+                    return (
+                      <>
+                        <Separator />
+                        <div>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Recruiter Notes</p>
+                          <div className="space-y-2">
+                            {notes.map((note: any, idx: number) => {
+                              const kind = note.metadata?.kind;
+                              const decision = note.metadata?.decision;
+                              const isDecision = kind === 'REVIEW_DECISION';
+                              return (
+                                <div key={note.id || idx} className="rounded-xl border border-border/60 bg-muted/20 px-3.5 py-2.5">
+                                  <div className="flex items-start justify-between gap-2 mb-1">
+                                    <div className="flex items-center gap-1.5">
+                                      {isDecision && (
+                                        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
+                                          decision === 'APPROVE' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                          : decision === 'REJECT' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
+                                          : 'bg-muted text-muted-foreground'
+                                        }`}>
+                                          {decision === 'APPROVE' ? 'Approved' : decision === 'REJECT' ? 'Rejected' : decision}
+                                        </span>
+                                      )}
+                                      {!isDecision && kind === 'ROUND_NOTE' && (
+                                        <span className="inline-flex items-center rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
+                                          Note
+                                        </span>
+                                      )}
+                                      {note.author?.name && (
+                                        <span className="text-xs text-muted-foreground">{note.author.name}</span>
+                                      )}
+                                    </div>
+                                    {note.createdAt && (
+                                      <span className="text-[10px] text-muted-foreground/60 shrink-0">
+                                        {new Date(note.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                      </span>
+                                    )}
+                                  </div>
+                                  {note.content && (
+                                    <p className="text-sm text-foreground/80 whitespace-pre-wrap">{note.content}</p>
+                                  )}
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
-                    </>
-                  )}
+                      </>
+                    );
+                  })()}
 
                   {/* ── Application Timeline ── */}
                   <Separator />
