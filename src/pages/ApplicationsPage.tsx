@@ -41,22 +41,17 @@ import {
   Eye,
   Calendar,
   MapPin,
-  Briefcase,
   DollarSign,
   Clock,
   ExternalLink,
   Trash2,
   X,
-  FileCheck,
   Video,
   Download,
   Link as LinkIcon,
   Building2,
   Globe,
   Monitor,
-  GraduationCap,
-  Users,
-  MessageSquare,
   CheckCircle2,
   XCircle,
   AlertCircle,
@@ -152,7 +147,6 @@ interface ApplicationWithDetails extends Application {
   rank?: number;
   shortlisted?: boolean;
   tags?: string[];
-  stage?: string;
   recruiterNotes?: string;
   screeningStatus?: string;
   screening_status?: string;
