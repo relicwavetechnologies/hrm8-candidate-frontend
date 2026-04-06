@@ -1,6 +1,6 @@
 /**
  * Applications Page
- * Enhanced application history with drawer detail view, rich data display
+ * Enhanced application history with wide drawer detail view, ATS-style rich data display
  */
 
 import { useState, useEffect } from 'react';
@@ -58,6 +58,13 @@ import {
   AlertCircle,
   ArrowRight,
   Star,
+  Briefcase,
+  Phone,
+  Users,
+  ClipboardList,
+  Award,
+  TrendingUp,
+  Play,
 } from 'lucide-react';
 import { formatDistanceToNow, format } from 'date-fns';
 import { useToast } from '@/shared/hooks/use-toast';
@@ -106,6 +113,26 @@ function formatSalary(min?: number, max?: number, currency?: string) {
   return `Up to ${fmt.format(max!)}`;
 }
 
+/* ── pipeline stages ── */
+
+const PIPELINE_STAGES = [
+  { key: 'NEW', label: 'Applied', icon: FileText },
+  { key: 'SCREENING', label: 'Screening', icon: Search },
+  { key: 'SHORTLISTED', label: 'Shortlisted', icon: Star },
+  { key: 'INTERVIEW', label: 'Interview', icon: Video },
+  { key: 'OFFER', label: 'Offer', icon: Award },
+  { key: 'HIRED', label: 'Hired', icon: CheckCircle2 },
+];
+
+function getStageIndex(status: string): number {
+  const map: Record<string, number> = {
+    'NEW': 0, 'SCREENING': 1, 'UNDER_REVIEW': 1, 'SHORTLISTED': 2,
+    'INTERVIEW': 3, 'INTERVIEW_SCHEDULED': 3, 'INTERVIEWED': 3,
+    'OFFER': 4, 'OFFERED': 4, 'HIRED': 5,
+  };
+  return map[status] ?? -1;
+}
+
 /* ── types ── */
 
 interface JobDetails {
@@ -128,19 +155,64 @@ interface JobDetails {
   };
 }
 
-interface VideoInterview {
+interface InterviewData {
   id: string;
-  scheduledDate: string;
-  duration: number;
+  scheduledDate?: string;
+  scheduled_date?: string;
+  scheduledTime?: string;
+  scheduled_time?: string;
+  duration?: number;
   meetingLink?: string;
+  meeting_link?: string;
   status: string;
-  type: string;
+  type?: string;
+  location?: string;
   notes?: string;
+  agenda?: string;
+  interviewers?: Array<{ name?: string; email?: string; role?: string }>;
+  feedback?: Array<{
+    interviewerName?: string;
+    overallRating?: number;
+    recommendation?: string;
+    strengths?: string;
+    concerns?: string;
+  }>;
+}
+
+interface AssessmentData {
+  id: string;
+  assessmentType?: string;
+  assessment_type?: string;
+  provider?: string;
+  status: string;
+  invitedDate?: string;
+  invited_date?: string;
+  completedDate?: string;
+  completed_date?: string;
+  expiryDate?: string;
+  expiry_date?: string;
+  overallScore?: number;
+  overall_score?: number;
+  passed?: boolean;
+  passThreshold?: number;
+  pass_threshold?: number;
+  result?: {
+    score?: number;
+    percentile?: number;
+    status?: string;
+    timeSpent?: number;
+    details?: {
+      categoryScores?: Record<string, number>;
+      strengths?: string[];
+      weaknesses?: string[];
+    };
+  };
 }
 
 interface ApplicationWithDetails extends Application {
   jobDetails?: JobDetails;
-  interviews?: VideoInterview[];
+  interviews?: InterviewData[];
+  assessments?: AssessmentData[];
   detailsLoaded?: boolean;
   screeningStatus?: string;
   screening_status?: string;
@@ -171,7 +243,6 @@ export default function ApplicationsPage() {
     loadApplications();
   }, []);
 
-  // Handle auto-expansion from query param
   useEffect(() => {
     if (expandId && applications.length > 0) {
       const app = applications.find(a => a.id === expandId);
@@ -213,11 +284,7 @@ export default function ApplicationsPage() {
       setApplications(appsWithSummary);
     } catch (error) {
       console.error('Failed to load applications:', error);
-      toast({
-        title: 'Failed to load applications',
-        description: 'Please try again later',
-        variant: 'destructive',
-      });
+      toast({ title: 'Failed to load applications', description: 'Please try again later', variant: 'destructive' });
     } finally {
       setIsLoading(false);
     }
@@ -230,22 +297,47 @@ export default function ApplicationsPage() {
     if (!app.detailsLoaded) {
       setLoadingDetail(true);
       try {
-        const [response, formResponse] = await Promise.all([
+        // Fetch application detail, form questions, interviews, and assessments in parallel
+        const [response, formResponse, interviewsRes, assessmentsRes] = await Promise.allSettled([
           applicationService.getApplication(app.id),
           jobService.getApplicationForm(app.jobId),
+          apiClient.get<{ interviews: InterviewData[] }>(`/api/applications/${app.id}/interviews`),
+          apiClient.get<{ assessments: AssessmentData[] }>(`/api/assessments/application/${app.id}`),
         ]);
 
+        // Build question label map from form
         let questionMap: Record<string, string> = {};
-        if (formResponse.success && formResponse.data) {
-          const formData = formResponse.data as any;
+        if (formResponse.status === 'fulfilled' && formResponse.value.success && formResponse.value.data) {
+          const formData = formResponse.value.data as any;
           const questions = formData?.form?.questions || formData?.questions || [];
           for (const q of questions) {
             if (q.id && q.label) questionMap[q.id] = q.label;
           }
         }
 
-        if (response.data?.application) {
-          const fullApp = response.data.application;
+        // Extract interviews
+        let interviews: InterviewData[] = [];
+        if (interviewsRes.status === 'fulfilled' && interviewsRes.value.success && interviewsRes.value.data) {
+          const data = interviewsRes.value.data as any;
+          interviews = data.interviews || data || [];
+          if (!Array.isArray(interviews)) interviews = [];
+        }
+
+        // Extract assessments
+        let assessments: AssessmentData[] = [];
+        if (assessmentsRes.status === 'fulfilled' && assessmentsRes.value.success && assessmentsRes.value.data) {
+          const data = assessmentsRes.value.data as any;
+          assessments = data.assessments || data || [];
+          if (!Array.isArray(assessments)) assessments = [];
+        }
+
+        if (response.status === 'fulfilled' && response.value.data?.application) {
+          const fullApp = response.value.data.application;
+          // Also check if fullApp has interviews/assessments nested
+          if ((fullApp as any).interviews && Array.isArray((fullApp as any).interviews)) {
+            interviews = (fullApp as any).interviews;
+          }
+
           // Enrich customAnswers with question labels
           const enrichedAnswers = (fullApp.customAnswers || app.customAnswers || []).map((ans: any) => ({
             ...ans,
@@ -255,6 +347,8 @@ export default function ApplicationsPage() {
             ...app,
             ...fullApp,
             customAnswers: enrichedAnswers,
+            interviews: interviews.length > 0 ? interviews : app.interviews,
+            assessments: assessments.length > 0 ? assessments : app.assessments,
             detailsLoaded: true,
             jobDetails: (fullApp as any).job ? {
               ...app.jobDetails!,
@@ -332,6 +426,8 @@ export default function ApplicationsPage() {
     }
   };
 
+  /* ── badge helpers ── */
+
   const getStatusBadge = (status: string, size: 'sm' | 'md' = 'sm') => {
     const cls = size === 'md' ? 'h-7 px-3 text-xs' : 'h-6 px-2 text-[10px]';
     switch (status) {
@@ -360,28 +456,6 @@ export default function ApplicationsPage() {
     }
   };
 
-  const getStageBadge = (stage?: string) => {
-    if (!stage) return null;
-    return (
-      <Badge variant="secondary" className="rounded-full text-[10px] px-2 py-0.5">
-        {stage.replace(/_/g, ' ')}
-      </Badge>
-    );
-  };
-
-  const getInterviewStatusBadge = (status: string) => {
-    switch (status) {
-      case 'SCHEDULED':
-        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full border-primary/20 bg-primary/10 text-primary">Scheduled</Badge>;
-      case 'COMPLETED':
-        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full border-emerald-200 bg-emerald-50 text-emerald-700">Completed</Badge>;
-      case 'CANCELLED':
-        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full border-rose-200 bg-rose-50 text-rose-700">Cancelled</Badge>;
-      default:
-        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full">{status}</Badge>;
-    }
-  };
-
   const getStatusIcon = (status: string) => {
     switch (status) {
       case 'NEW': return <AlertCircle className="h-4 w-4 text-primary" />;
@@ -394,6 +468,53 @@ export default function ApplicationsPage() {
       case 'WITHDRAWN': return <X className="h-4 w-4 text-muted-foreground" />;
       default: return <AlertCircle className="h-4 w-4 text-muted-foreground" />;
     }
+  };
+
+  const getInterviewStatusBadge = (status: string) => {
+    const s = status?.toUpperCase();
+    switch (s) {
+      case 'SCHEDULED':
+        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full border-primary/20 bg-primary/10 text-primary">Scheduled</Badge>;
+      case 'COMPLETED':
+        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full border-emerald-200 bg-emerald-50 text-emerald-700">Completed</Badge>;
+      case 'CANCELLED':
+      case 'CANCELED':
+        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full border-rose-200 bg-rose-50 text-rose-700">Cancelled</Badge>;
+      case 'NO-SHOW':
+      case 'NO_SHOW':
+        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full border-amber-200 bg-amber-50 text-amber-700">No Show</Badge>;
+      case 'IN_PROGRESS':
+      case 'IN-PROGRESS':
+        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full border-sky-200 bg-sky-50 text-sky-700">In Progress</Badge>;
+      default:
+        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full">{status}</Badge>;
+    }
+  };
+
+  const getAssessmentStatusBadge = (status: string) => {
+    const s = status?.toUpperCase();
+    switch (s) {
+      case 'INVITED':
+        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full border-primary/20 bg-primary/10 text-primary">Invited</Badge>;
+      case 'IN-PROGRESS':
+      case 'IN_PROGRESS':
+        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full border-sky-200 bg-sky-50 text-sky-700">In Progress</Badge>;
+      case 'COMPLETED':
+        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full border-emerald-200 bg-emerald-50 text-emerald-700">Completed</Badge>;
+      case 'EXPIRED':
+        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full border-amber-200 bg-amber-50 text-amber-700">Expired</Badge>;
+      case 'CANCELLED':
+        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full border-rose-200 bg-rose-50 text-rose-700">Cancelled</Badge>;
+      default:
+        return <Badge variant="outline" className="h-5 px-1.5 text-[10px] rounded-full">{status}</Badge>;
+    }
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return 'text-emerald-600';
+    if (score >= 60) return 'text-amber-600';
+    if (score >= 40) return 'text-orange-600';
+    return 'text-rose-600';
   };
 
   const canWithdraw = (status: string) => !['WITHDRAWN', 'REJECTED', 'HIRED'].includes(status);
@@ -413,17 +534,62 @@ export default function ApplicationsPage() {
 
   const paginatedApplications = filteredApplications.slice(0, visibleCount);
   const hasMoreApplications = filteredApplications.length > visibleCount;
-
   const handleLoadMore = () => { setVisibleCount(prev => prev + APPLICATIONS_PER_PAGE); };
 
   React.useEffect(() => { setVisibleCount(APPLICATIONS_PER_PAGE); }, [searchQuery, statusFilter]);
+
+  /* ── Pipeline Progress Component ── */
+  const PipelineProgress = ({ status }: { status: string }) => {
+    const isTerminal = ['REJECTED', 'WITHDRAWN'].includes(status);
+    const currentIdx = getStageIndex(status);
+
+    return (
+      <div className="flex items-center gap-1 w-full">
+        {PIPELINE_STAGES.map((stage, idx) => {
+          const Icon = stage.icon;
+          const isActive = idx === currentIdx;
+          const isCompleted = !isTerminal && idx < currentIdx;
+          const isFuture = isTerminal || idx > currentIdx;
+
+          return (
+            <React.Fragment key={stage.key}>
+              <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
+                <div className={cn(
+                  "w-7 h-7 rounded-full flex items-center justify-center transition-all",
+                  isActive && "bg-primary text-primary-foreground shadow-sm",
+                  isCompleted && "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400",
+                  isFuture && "bg-muted text-muted-foreground/40",
+                )}>
+                  {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+                </div>
+                <span className={cn(
+                  "text-[9px] font-medium uppercase tracking-wider text-center leading-tight",
+                  isActive && "text-primary font-semibold",
+                  isCompleted && "text-emerald-600 dark:text-emerald-400",
+                  isFuture && "text-muted-foreground/40",
+                )}>
+                  {stage.label}
+                </span>
+              </div>
+              {idx < PIPELINE_STAGES.length - 1 && (
+                <div className={cn(
+                  "h-[2px] w-4 flex-shrink-0 rounded-full mt-[-14px]",
+                  isCompleted ? "bg-emerald-300 dark:bg-emerald-700" : "bg-border",
+                )} />
+              )}
+            </React.Fragment>
+          );
+        })}
+      </div>
+    );
+  };
 
   return (
     <CandidatePageLayout>
       <div className="p-6 space-y-6">
         <AtsPageHeader
           title="My Applications"
-          subtitle="Track your job applications, interviews, and documents"
+          subtitle="Track your job applications, interviews, and assessments"
         >
           <div className="flex items-center gap-2">
             <div className="relative">
@@ -443,6 +609,7 @@ export default function ApplicationsPage() {
                 <SelectItem value="all">All Statuses</SelectItem>
                 <SelectItem value="NEW">New</SelectItem>
                 <SelectItem value="SCREENING">Screening</SelectItem>
+                <SelectItem value="SHORTLISTED">Shortlisted</SelectItem>
                 <SelectItem value="INTERVIEW">Interview</SelectItem>
                 <SelectItem value="OFFER">Offer</SelectItem>
                 <SelectItem value="HIRED">Hired</SelectItem>
@@ -455,6 +622,26 @@ export default function ApplicationsPage() {
             </Button>
           </div>
         </AtsPageHeader>
+
+        {/* Stats summary */}
+        {!isLoading && applications.length > 0 && (
+          <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+            {[
+              { label: 'Total', count: applications.length, color: 'text-foreground' },
+              { label: 'Active', count: applications.filter(a => !['REJECTED', 'WITHDRAWN', 'HIRED'].includes(a.status)).length, color: 'text-primary' },
+              { label: 'Screening', count: applications.filter(a => ['SCREENING', 'UNDER_REVIEW'].includes(a.status)).length, color: 'text-sky-600' },
+              { label: 'Interview', count: applications.filter(a => ['INTERVIEW', 'INTERVIEW_SCHEDULED', 'INTERVIEWED'].includes(a.status)).length, color: 'text-amber-600' },
+              { label: 'Offered', count: applications.filter(a => ['OFFER', 'OFFERED'].includes(a.status)).length, color: 'text-emerald-600' },
+              { label: 'Hired', count: applications.filter(a => a.status === 'HIRED').length, color: 'text-emerald-600' },
+              { label: 'Rejected', count: applications.filter(a => a.status === 'REJECTED').length, color: 'text-rose-600' },
+            ].map(stat => (
+              <div key={stat.label} className="rounded-2xl border border-border/70 bg-muted/[0.24] px-3 py-2.5 text-center">
+                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">{stat.label}</p>
+                <p className={cn("text-xl font-bold mt-0.5", stat.color)}>{stat.count}</p>
+              </div>
+            ))}
+          </div>
+        )}
 
         <Card>
           <CardHeader>
@@ -512,6 +699,11 @@ export default function ApplicationsPage() {
                                 {app.jobDetails?.title || 'Loading job details...'}
                               </h3>
                               {getStatusBadge(app.status)}
+                              {app.shortlisted && (
+                                <Badge variant="outline" className="rounded-full text-[10px] px-2 py-0.5 border-violet-200 bg-violet-50 text-violet-700">
+                                  <Star className="h-3 w-3 mr-1" />Shortlisted
+                                </Badge>
+                              )}
                               {app.isNew && (
                                 <span className="rounded-full bg-primary px-2 py-0.5 text-[10px] font-semibold text-primary-foreground">New</span>
                               )}
@@ -533,6 +725,12 @@ export default function ApplicationsPage() {
                                 <span className="inline-flex items-center gap-1.5">
                                   <MapPin className="h-3.5 w-3.5" />
                                   {app.jobDetails.location}
+                                </span>
+                              )}
+                              {app.score !== undefined && app.score !== null && (
+                                <span className={cn("inline-flex items-center gap-1.5 font-medium", getScoreColor(app.score))}>
+                                  <TrendingUp className="h-3.5 w-3.5" />
+                                  {app.score}% Match
                                 </span>
                               )}
                             </div>
@@ -562,11 +760,14 @@ export default function ApplicationsPage() {
                                   {salary}
                                 </Badge>
                               )}
-                              {app.stage && (
+                              {app.stage && app.stage !== app.status && (
                                 <Badge variant="secondary" className="rounded-full text-[10px] px-2.5 py-0.5">
                                   {String(app.stage).replace(/_/g, ' ')}
                                 </Badge>
                               )}
+                              {app.tags && app.tags.length > 0 && app.tags.slice(0, 2).map((tag, i) => (
+                                <span key={i} className="rounded-full border border-dashed border-border/70 px-2 py-0.5 text-[10px] text-muted-foreground">{tag}</span>
+                              ))}
                             </div>
                           </div>
 
@@ -598,115 +799,190 @@ export default function ApplicationsPage() {
         </Card>
       </div>
 
-      {/* ── Application Detail Drawer ── */}
+      {/* ── Application Detail Drawer (wide) ── */}
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent className="w-full sm:max-w-2xl overflow-y-auto p-0">
+        <SheetContent className="w-full sm:max-w-3xl overflow-y-auto p-0">
           {selectedApp && (
             <div className="flex flex-col h-full">
               {/* Drawer header */}
-              <SheetHeader className="p-5 pb-4 border-b sticky top-0 bg-background z-10">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    {getStatusIcon(selectedApp.status)}
-                    <SheetTitle className="text-lg font-semibold tracking-tight">
-                      {selectedApp.jobDetails?.title || 'Application Details'}
-                    </SheetTitle>
-                    {getStatusBadge(selectedApp.status, 'md')}
+              <SheetHeader className="p-6 pb-4 border-b sticky top-0 bg-background z-10">
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3">
+                    <div className="flex-1 min-w-0 space-y-1.5">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {getStatusIcon(selectedApp.status)}
+                        <SheetTitle className="text-xl font-bold tracking-tight">
+                          {selectedApp.jobDetails?.title || 'Application Details'}
+                        </SheetTitle>
+                      </div>
+                      <SheetDescription className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                        {selectedApp.jobDetails?.company && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <Building2 className="h-3.5 w-3.5" />
+                            {selectedApp.jobDetails.company.name}
+                          </span>
+                        )}
+                        <span className="inline-flex items-center gap-1.5">
+                          <Calendar className="h-3.5 w-3.5" />
+                          Applied {format(new Date(selectedApp.appliedDate), 'PPP')}
+                        </span>
+                        {selectedApp.jobDetails?.location && (
+                          <span className="inline-flex items-center gap-1.5">
+                            <MapPin className="h-3.5 w-3.5" />
+                            {selectedApp.jobDetails.location}
+                          </span>
+                        )}
+                      </SheetDescription>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {getStatusBadge(selectedApp.status, 'md')}
+                    </div>
                   </div>
-                  <SheetDescription className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
-                    {selectedApp.jobDetails?.company && (
-                      <span className="inline-flex items-center gap-1.5">
-                        <Building2 className="h-3.5 w-3.5" />
-                        {selectedApp.jobDetails.company.name}
-                      </span>
-                    )}
-                    <span className="inline-flex items-center gap-1.5">
-                      <Clock className="h-3.5 w-3.5" />
-                      Applied {format(new Date(selectedApp.appliedDate), 'PPP')}
-                    </span>
-                    <span className="text-muted-foreground/60">
-                      ID: {selectedApp.id.slice(0, 8)}
-                    </span>
-                  </SheetDescription>
+
+                  {/* Pipeline progress bar */}
+                  {!['REJECTED', 'WITHDRAWN'].includes(selectedApp.status) && (
+                    <div className="pt-1">
+                      <PipelineProgress status={selectedApp.status} />
+                    </div>
+                  )}
+                  {selectedApp.status === 'REJECTED' && (
+                    <div className="rounded-xl bg-rose-50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900 p-3 flex items-center gap-2">
+                      <XCircle className="h-4 w-4 text-rose-600 shrink-0" />
+                      <p className="text-sm text-rose-700 dark:text-rose-300">This application has been rejected.</p>
+                    </div>
+                  )}
+                  {selectedApp.status === 'WITHDRAWN' && (
+                    <div className="rounded-xl bg-muted/50 border border-border p-3 flex items-center gap-2">
+                      <X className="h-4 w-4 text-muted-foreground shrink-0" />
+                      <p className="text-sm text-muted-foreground">You withdrew this application.</p>
+                    </div>
+                  )}
                 </div>
               </SheetHeader>
 
               {loadingDetail ? (
-                <div className="p-5 space-y-4">
+                <div className="p-6 space-y-4">
+                  <Skeleton className="h-20 w-full rounded-2xl" />
                   <Skeleton className="h-32 w-full rounded-2xl" />
                   <Skeleton className="h-24 w-full rounded-2xl" />
                   <Skeleton className="h-24 w-full rounded-2xl" />
                 </div>
               ) : (
-                <div className="p-5 space-y-5 flex-1">
-                  {/* Status & Stage */}
-                  <div className="rounded-2xl border border-border/70 bg-muted/[0.24] p-4 space-y-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Application Status</p>
-                    <div className="flex flex-wrap gap-2">
-                      {getStatusBadge(selectedApp.status, 'md')}
-                      {selectedApp.stage && getStageBadge(String(selectedApp.stage))}
+                <div className="p-6 space-y-6 flex-1">
+
+                  {/* ── Scoring & Status metrics ── */}
+                  {(selectedApp.score !== undefined && selectedApp.score !== null) || selectedApp.rank || selectedApp.shortlisted ? (
+                    <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+                      {selectedApp.score !== undefined && selectedApp.score !== null && (
+                        <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-4 py-3 text-center">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Fit Score</p>
+                          <p className={cn("text-2xl font-bold mt-1", getScoreColor(selectedApp.score))}>{selectedApp.score}<span className="text-sm font-normal text-muted-foreground">/100</span></p>
+                        </div>
+                      )}
+                      {selectedApp.rank && (
+                        <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-4 py-3 text-center">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Rank</p>
+                          <p className="text-2xl font-bold mt-1 text-primary">#{selectedApp.rank}</p>
+                        </div>
+                      )}
                       {selectedApp.shortlisted && (
-                        <Badge variant="outline" className="rounded-full text-[10px] px-2.5 py-0.5 border-violet-200 bg-violet-50 text-violet-700">
-                          <Star className="h-3 w-3 mr-1" />
-                          Shortlisted
-                        </Badge>
+                        <div className="rounded-2xl border border-violet-200 dark:border-violet-900 bg-violet-50 dark:bg-violet-950/20 px-4 py-3 text-center">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-violet-600 dark:text-violet-400">Shortlisted</p>
+                          <Star className="h-6 w-6 text-violet-600 dark:text-violet-400 mx-auto mt-1 fill-violet-200 dark:fill-violet-900" />
+                        </div>
+                      )}
+                      {selectedApp.stage && (
+                        <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-4 py-3 text-center">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Stage</p>
+                          <p className="text-sm font-semibold mt-1.5">{String(selectedApp.stage).replace(/_/g, ' ')}</p>
+                        </div>
                       )}
                     </div>
-                    {selectedApp.score !== undefined && selectedApp.score !== null && (
-                      <div className="flex items-center gap-4 mt-2">
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Fit Score</p>
-                          <p className="text-lg font-semibold">{selectedApp.score}/100</p>
-                        </div>
-                        {selectedApp.rank && (
-                          <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Rank</p>
-                            <p className="text-lg font-semibold">#{selectedApp.rank}</p>
-                          </div>
-                        )}
-                      </div>
-                    )}
-                    {selectedApp.tags && selectedApp.tags.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {selectedApp.tags.map((tag, i) => (
-                          <span key={i} className="rounded-full border border-dashed border-border/70 px-2 py-0.5 text-[10px] text-muted-foreground">{tag}</span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
+                  ) : null}
 
-                  {/* Job Details metrics */}
+                  {/* Tags */}
+                  {selectedApp.tags && selectedApp.tags.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {selectedApp.tags.map((tag, i) => (
+                        <span key={i} className="rounded-full border border-dashed border-border/70 px-2.5 py-0.5 text-[10px] text-muted-foreground">{tag}</span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* ── Job Details ── */}
                   {selectedApp.jobDetails && (
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Job Details</p>
                       <div className="grid gap-3 sm:grid-cols-2">
                         {selectedApp.jobDetails.location && (
-                          <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-3 py-3">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Location</p>
-                            <p className="mt-1 text-sm font-semibold">{selectedApp.jobDetails.location}</p>
+                          <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Location</p>
+                                <p className="text-sm font-semibold mt-0.5">{selectedApp.jobDetails.location}</p>
+                              </div>
+                            </div>
                           </div>
                         )}
                         {selectedApp.jobDetails.employmentType && (
-                          <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-3 py-3">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Employment</p>
-                            <p className="mt-1 text-sm font-semibold">{formatEmploymentType(selectedApp.jobDetails.employmentType)}</p>
-                            {selectedApp.jobDetails.workArrangement && (
-                              <p className="text-xs text-muted-foreground">{formatWorkArrangement(selectedApp.jobDetails.workArrangement)}</p>
-                            )}
+                          <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Employment</p>
+                                <p className="text-sm font-semibold mt-0.5">{formatEmploymentType(selectedApp.jobDetails.employmentType)}</p>
+                                {selectedApp.jobDetails.workArrangement && (
+                                  <p className="text-xs text-muted-foreground">{formatWorkArrangement(selectedApp.jobDetails.workArrangement)}</p>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         )}
                         {(selectedApp.jobDetails.salaryMin || selectedApp.jobDetails.salaryMax) && (
-                          <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-3 py-3">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Salary</p>
-                            <p className="mt-1 text-sm font-semibold">
-                              {formatSalary(selectedApp.jobDetails.salaryMin, selectedApp.jobDetails.salaryMax, selectedApp.jobDetails.salaryCurrency)}
-                            </p>
+                          <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <DollarSign className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Salary</p>
+                                <p className="text-sm font-semibold mt-0.5">
+                                  {formatSalary(selectedApp.jobDetails.salaryMin, selectedApp.jobDetails.salaryMax, selectedApp.jobDetails.salaryCurrency)}
+                                </p>
+                              </div>
+                            </div>
                           </div>
                         )}
                         {selectedApp.jobDetails.department && (
-                          <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-3 py-3">
-                            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Department</p>
-                            <p className="mt-1 text-sm font-semibold">{selectedApp.jobDetails.department}</p>
+                          <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Department</p>
+                                <p className="text-sm font-semibold mt-0.5">{selectedApp.jobDetails.department}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {(selectedApp.jobDetails.experienceLevel || selectedApp.jobDetails.experience_level) && (
+                          <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <Award className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Experience</p>
+                                <p className="text-sm font-semibold mt-0.5">{(selectedApp.jobDetails.experienceLevel || selectedApp.jobDetails.experience_level || '').replace(/_/g, ' ')}</p>
+                              </div>
+                            </div>
+                          </div>
+                        )}
+                        {(selectedApp.jobDetails.numberOfVacancies || selectedApp.jobDetails.number_of_vacancies) && (selectedApp.jobDetails.numberOfVacancies || selectedApp.jobDetails.number_of_vacancies || 0) > 1 && (
+                          <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-4 py-3">
+                            <div className="flex items-center gap-2">
+                              <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Vacancies</p>
+                                <p className="text-sm font-semibold mt-0.5">{selectedApp.jobDetails.numberOfVacancies || selectedApp.jobDetails.number_of_vacancies}</p>
+                              </div>
+                            </div>
                           </div>
                         )}
                       </div>
@@ -717,35 +993,42 @@ export default function ApplicationsPage() {
                         onClick={() => navigate(`/jobs/${selectedApp.jobId}`)}
                       >
                         <ExternalLink className="h-3.5 w-3.5 mr-2" />
-                        View Job Posting
+                        View Full Job Posting
                       </Button>
                     </div>
                   )}
 
-                  {/* Documents */}
+                  <Separator />
+
+                  {/* ── Documents & Links ── */}
                   <div>
                     <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Documents & Links</p>
-                    <div className="space-y-2">
+                    <div className="grid gap-2 sm:grid-cols-2">
                       {selectedApp.resumeUrl ? (
                         <div className="flex items-center justify-between p-3 rounded-2xl border border-border/70 hover:bg-muted/[0.1] transition-colors">
                           <div className="flex items-center gap-2.5">
-                            <FileText className="h-4 w-4 text-primary shrink-0" />
-                            <span className="text-sm font-medium">Resume</span>
+                            <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                              <FileText className="h-4 w-4 text-primary" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium">Resume</span>
+                              <p className="text-[10px] text-muted-foreground">PDF Document</p>
+                            </div>
                           </div>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => {
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => {
                               const parts = selectedApp.resumeUrl!.split('/');
                               const fn = parts[parts.length - 1].split('?')[0] || 'resume.pdf';
                               setPreviewDocument({ url: selectedApp.resumeUrl!, name: fn, type: 'resume' });
                             }}>
-                              <Eye className="h-3.5 w-3.5 mr-1" />Preview
+                              <Eye className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => {
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => {
                               const parts = selectedApp.resumeUrl!.split('/');
                               const fn = parts[parts.length - 1].split('?')[0] || 'resume.pdf';
                               handleDownloadFile(selectedApp.resumeUrl!, fn);
                             }}>
-                              <Download className="h-3.5 w-3.5 mr-1" />Download
+                              <Download className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </div>
@@ -758,23 +1041,28 @@ export default function ApplicationsPage() {
                       {selectedApp.coverLetterUrl ? (
                         <div className="flex items-center justify-between p-3 rounded-2xl border border-border/70 hover:bg-muted/[0.1] transition-colors">
                           <div className="flex items-center gap-2.5">
-                            <FileText className="h-4 w-4 text-teal shrink-0" />
-                            <span className="text-sm font-medium">Cover Letter</span>
+                            <div className="w-8 h-8 rounded-lg bg-teal-100 dark:bg-teal-950/30 flex items-center justify-center">
+                              <FileText className="h-4 w-4 text-teal-600" />
+                            </div>
+                            <div>
+                              <span className="text-sm font-medium">Cover Letter</span>
+                              <p className="text-[10px] text-muted-foreground">Document</p>
+                            </div>
                           </div>
                           <div className="flex gap-1">
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => {
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => {
                               const parts = selectedApp.coverLetterUrl!.split('/');
                               const fn = parts[parts.length - 1].split('?')[0] || 'cover-letter.pdf';
                               setPreviewDocument({ url: selectedApp.coverLetterUrl!, name: fn, type: 'coverLetter' });
                             }}>
-                              <Eye className="h-3.5 w-3.5 mr-1" />Preview
+                              <Eye className="h-3.5 w-3.5" />
                             </Button>
-                            <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => {
+                            <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => {
                               const parts = selectedApp.coverLetterUrl!.split('/');
                               const fn = parts[parts.length - 1].split('?')[0] || 'cover-letter.pdf';
                               handleDownloadFile(selectedApp.coverLetterUrl!, fn);
                             }}>
-                              <Download className="h-3.5 w-3.5 mr-1" />Download
+                              <Download className="h-3.5 w-3.5" />
                             </Button>
                           </div>
                         </div>
@@ -787,11 +1075,13 @@ export default function ApplicationsPage() {
                       {selectedApp.portfolioUrl && (
                         <div className="flex items-center justify-between p-3 rounded-2xl border border-border/70 hover:bg-muted/[0.1] transition-colors">
                           <div className="flex items-center gap-2.5">
-                            <LinkIcon className="h-4 w-4 text-orange shrink-0" />
+                            <div className="w-8 h-8 rounded-lg bg-purple-100 dark:bg-purple-950/30 flex items-center justify-center">
+                              <LinkIcon className="h-4 w-4 text-purple-600" />
+                            </div>
                             <span className="text-sm font-medium">Portfolio</span>
                           </div>
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => safeOpenExternal(selectedApp.portfolioUrl)}>
-                            <ExternalLink className="h-3.5 w-3.5 mr-1" />Open
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => safeOpenExternal(selectedApp.portfolioUrl)}>
+                            <ExternalLink className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       )}
@@ -799,91 +1089,387 @@ export default function ApplicationsPage() {
                       {selectedApp.linkedInUrl && (
                         <div className="flex items-center justify-between p-3 rounded-2xl border border-border/70 hover:bg-muted/[0.1] transition-colors">
                           <div className="flex items-center gap-2.5">
-                            <LinkIcon className="h-4 w-4 text-primary shrink-0" />
+                            <div className="w-8 h-8 rounded-lg bg-sky-100 dark:bg-sky-950/30 flex items-center justify-center">
+                              <LinkIcon className="h-4 w-4 text-sky-600" />
+                            </div>
                             <span className="text-sm font-medium">LinkedIn</span>
                           </div>
-                          <Button variant="ghost" size="sm" className="h-7 px-2 text-xs" onClick={() => safeOpenExternal(selectedApp.linkedInUrl)}>
-                            <ExternalLink className="h-3.5 w-3.5 mr-1" />Open
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => safeOpenExternal(selectedApp.linkedInUrl)}>
+                            <ExternalLink className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      )}
+
+                      {selectedApp.websiteUrl && (
+                        <div className="flex items-center justify-between p-3 rounded-2xl border border-border/70 hover:bg-muted/[0.1] transition-colors">
+                          <div className="flex items-center gap-2.5">
+                            <div className="w-8 h-8 rounded-lg bg-muted flex items-center justify-center">
+                              <Globe className="h-4 w-4 text-foreground/60" />
+                            </div>
+                            <span className="text-sm font-medium">Website</span>
+                          </div>
+                          <Button variant="ghost" size="sm" className="h-7 w-7 p-0" onClick={() => safeOpenExternal(selectedApp.websiteUrl)}>
+                            <ExternalLink className="h-3.5 w-3.5" />
                           </Button>
                         </div>
                       )}
                     </div>
                   </div>
 
-                  {/* Screening Answers */}
-                  {selectedApp.customAnswers && selectedApp.customAnswers.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Screening Answers</p>
-                      <div className="space-y-3">
-                        {selectedApp.customAnswers.map((ans: any, i: number) => (
-                          <div key={ans.questionId || i} className="rounded-2xl border border-border/70 p-3 space-y-1">
-                            <p className="text-xs font-medium text-foreground">{ans.question || `Question ${i + 1}`}</p>
-                            <p className="text-sm text-muted-foreground">
-                              {Array.isArray(ans.answer) ? ans.answer.join(', ') : String(ans.answer)}
-                            </p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Questionnaire Responses */}
-                  {selectedApp.questionnaireData?.responses && selectedApp.questionnaireData.responses.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Questionnaire Responses</p>
-                      <div className="space-y-3">
-                        {selectedApp.questionnaireData.responses.map((resp: any, i: number) => (
-                          <div key={resp.questionId || i} className="rounded-2xl border border-border/70 p-3 space-y-1">
-                            <p className="text-xs font-medium text-foreground">{resp.question}</p>
-                            <p className="text-sm text-muted-foreground">{resp.answer}</p>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Interviews */}
+                  {/* ── Interviews ── */}
                   {selectedApp.interviews && selectedApp.interviews.length > 0 && (
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Interviews</p>
-                      <div className="space-y-2">
-                        {selectedApp.interviews.map((interview) => (
-                          <div key={interview.id} className="rounded-2xl border border-border/70 p-3 space-y-2">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              {getInterviewStatusBadge(interview.status)}
-                              <span className="text-[10px] text-muted-foreground uppercase">{interview.type}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-sm">
-                              <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                              <span>{format(new Date(interview.scheduledDate), 'PPP p')}</span>
-                              <span className="text-muted-foreground">·</span>
-                              <span className="text-muted-foreground">{interview.duration} min</span>
-                            </div>
-                            {interview.meetingLink && (
-                              <Button variant="outline" size="sm" className="rounded-xl" onClick={() => safeOpenExternal(interview.meetingLink)}>
-                                <Video className="h-3.5 w-3.5 mr-2" />Join Meeting
-                              </Button>
-                            )}
-                            {interview.notes && (
-                              <p className="text-xs text-muted-foreground">{interview.notes}</p>
-                            )}
-                          </div>
-                        ))}
+                    <>
+                      <Separator />
+                      <div>
+                        <div className="flex items-center justify-between mb-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+                            Interviews ({selectedApp.interviews.length})
+                          </p>
+                        </div>
+                        <div className="space-y-3">
+                          {selectedApp.interviews.map((interview) => {
+                            const scheduledDate = interview.scheduledDate || interview.scheduled_date;
+                            const meetingLink = interview.meetingLink || interview.meeting_link;
+                            const interviewType = interview.type || 'interview';
+
+                            return (
+                              <div key={interview.id} className="rounded-2xl border border-border/70 p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2 flex-wrap">
+                                    {interviewType.toLowerCase().includes('video') || interviewType.toLowerCase().includes('virtual') ? (
+                                      <Video className="h-4 w-4 text-primary" />
+                                    ) : interviewType.toLowerCase().includes('phone') ? (
+                                      <Phone className="h-4 w-4 text-primary" />
+                                    ) : interviewType.toLowerCase().includes('panel') ? (
+                                      <Users className="h-4 w-4 text-primary" />
+                                    ) : (
+                                      <Briefcase className="h-4 w-4 text-primary" />
+                                    )}
+                                    <span className="text-sm font-semibold capitalize">{interviewType.replace(/_/g, ' ').replace(/-/g, ' ')}</span>
+                                    {getInterviewStatusBadge(interview.status)}
+                                  </div>
+                                  {interview.duration && (
+                                    <span className="text-xs text-muted-foreground">{interview.duration} min</span>
+                                  )}
+                                </div>
+
+                                {scheduledDate && (
+                                  <div className="flex items-center gap-2 text-sm">
+                                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
+                                    <span>{format(new Date(scheduledDate), 'EEEE, MMMM d, yyyy')}</span>
+                                    {interview.scheduledTime || interview.scheduled_time ? (
+                                      <>
+                                        <span className="text-muted-foreground">·</span>
+                                        <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                                        <span>{interview.scheduledTime || interview.scheduled_time}</span>
+                                      </>
+                                    ) : null}
+                                  </div>
+                                )}
+
+                                {interview.location && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <MapPin className="h-3.5 w-3.5" />
+                                    <span>{interview.location}</span>
+                                  </div>
+                                )}
+
+                                {interview.interviewers && interview.interviewers.length > 0 && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Users className="h-3.5 w-3.5" />
+                                    <span>{interview.interviewers.map(i => i.name || i.email).filter(Boolean).join(', ')}</span>
+                                  </div>
+                                )}
+
+                                {interview.agenda && (
+                                  <p className="text-xs text-muted-foreground bg-muted/50 rounded-xl p-2.5">{interview.agenda}</p>
+                                )}
+
+                                {interview.notes && (
+                                  <p className="text-xs text-muted-foreground">{interview.notes}</p>
+                                )}
+
+                                {meetingLink && interview.status?.toUpperCase() === 'SCHEDULED' && (
+                                  <Button variant="default" size="sm" className="rounded-xl" onClick={() => safeOpenExternal(meetingLink)}>
+                                    <Play className="h-3.5 w-3.5 mr-2" />Join Meeting
+                                  </Button>
+                                )}
+
+                                {/* Interview feedback summary (if visible to candidate) */}
+                                {interview.feedback && interview.feedback.length > 0 && (
+                                  <div className="border-t border-border/50 pt-2 mt-2 space-y-1">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Feedback</p>
+                                    {interview.feedback.map((fb, idx) => (
+                                      <div key={idx} className="text-xs text-muted-foreground">
+                                        {fb.interviewerName && <span className="font-medium text-foreground">{fb.interviewerName}: </span>}
+                                        {fb.recommendation && (
+                                          <Badge variant="outline" className={cn(
+                                            "h-4 px-1 text-[9px] rounded-full mr-1",
+                                            fb.recommendation.includes('yes') && "border-emerald-200 bg-emerald-50 text-emerald-700",
+                                            fb.recommendation.includes('no') && "border-rose-200 bg-rose-50 text-rose-700",
+                                            fb.recommendation === 'maybe' && "border-amber-200 bg-amber-50 text-amber-700",
+                                          )}>{fb.recommendation.replace(/-/g, ' ')}</Badge>
+                                        )}
+                                        {fb.overallRating && <span>({fb.overallRating}/5)</span>}
+                                      </div>
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
                       </div>
-                    </div>
+                    </>
                   )}
 
-                  {/* Recruiter Notes (if any) */}
+                  {/* ── Assessments ── */}
+                  {selectedApp.assessments && selectedApp.assessments.length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">
+                          Assessments ({selectedApp.assessments.length})
+                        </p>
+                        <div className="space-y-3">
+                          {selectedApp.assessments.map((assessment) => {
+                            const aType = assessment.assessmentType || assessment.assessment_type || 'Assessment';
+                            const score = assessment.overallScore ?? assessment.overall_score ?? assessment.result?.score;
+                            const completedDate = assessment.completedDate || assessment.completed_date;
+                            const expiryDate = assessment.expiryDate || assessment.expiry_date;
+                            const threshold = assessment.passThreshold ?? assessment.pass_threshold;
+
+                            return (
+                              <div key={assessment.id} className="rounded-2xl border border-border/70 p-4 space-y-3">
+                                <div className="flex items-center justify-between">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-8 h-8 rounded-lg bg-primary/10 flex items-center justify-center">
+                                      <ClipboardList className="h-4 w-4 text-primary" />
+                                    </div>
+                                    <div>
+                                      <p className="text-sm font-semibold capitalize">{aType.replace(/_/g, ' ').replace(/-/g, ' ')}</p>
+                                      {assessment.provider && (
+                                        <p className="text-[10px] text-muted-foreground capitalize">{assessment.provider}</p>
+                                      )}
+                                    </div>
+                                  </div>
+                                  {getAssessmentStatusBadge(assessment.status)}
+                                </div>
+
+                                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                                  {score !== undefined && score !== null && (
+                                    <div className="rounded-xl bg-muted/50 p-2 text-center">
+                                      <p className="text-[10px] text-muted-foreground uppercase">Score</p>
+                                      <p className={cn("text-lg font-bold", getScoreColor(score))}>{score}<span className="text-xs font-normal text-muted-foreground">/100</span></p>
+                                      {assessment.passed !== undefined && (
+                                        <Badge variant="outline" className={cn(
+                                          "h-4 px-1 text-[9px] rounded-full mt-0.5",
+                                          assessment.passed ? "border-emerald-200 bg-emerald-50 text-emerald-700" : "border-rose-200 bg-rose-50 text-rose-700"
+                                        )}>
+                                          {assessment.passed ? 'Passed' : 'Failed'}
+                                          {threshold ? ` (${threshold}%)` : ''}
+                                        </Badge>
+                                      )}
+                                    </div>
+                                  )}
+                                  {completedDate && (
+                                    <div className="rounded-xl bg-muted/50 p-2 text-center">
+                                      <p className="text-[10px] text-muted-foreground uppercase">Completed</p>
+                                      <p className="text-sm font-medium mt-0.5">{format(new Date(completedDate), 'MMM d, yyyy')}</p>
+                                    </div>
+                                  )}
+                                  {expiryDate && assessment.status?.toUpperCase() === 'INVITED' && (
+                                    <div className="rounded-xl bg-muted/50 p-2 text-center">
+                                      <p className="text-[10px] text-muted-foreground uppercase">Expires</p>
+                                      <p className="text-sm font-medium mt-0.5">{format(new Date(expiryDate), 'MMM d, yyyy')}</p>
+                                    </div>
+                                  )}
+                                  {assessment.result?.timeSpent && (
+                                    <div className="rounded-xl bg-muted/50 p-2 text-center">
+                                      <p className="text-[10px] text-muted-foreground uppercase">Duration</p>
+                                      <p className="text-sm font-medium mt-0.5">{assessment.result.timeSpent} min</p>
+                                    </div>
+                                  )}
+                                </div>
+
+                                {/* Category scores breakdown */}
+                                {assessment.result?.details?.categoryScores && Object.keys(assessment.result.details.categoryScores).length > 0 && (
+                                  <div className="border-t border-border/50 pt-2">
+                                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-2">Category Scores</p>
+                                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                                      {Object.entries(assessment.result.details.categoryScores).map(([cat, catScore]) => (
+                                        <div key={cat} className="flex items-center justify-between text-xs rounded-lg bg-muted/30 px-2 py-1.5">
+                                          <span className="capitalize text-muted-foreground">{cat.replace(/_/g, ' ')}</span>
+                                          <span className={cn("font-semibold", getScoreColor(catScore as number))}>{String(catScore)}</span>
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </div>
+                                )}
+
+                                {/* Strengths/Weaknesses */}
+                                {assessment.result?.details?.strengths && assessment.result.details.strengths.length > 0 && (
+                                  <div className="text-xs space-y-1">
+                                    <p className="font-medium text-emerald-600">Strengths:</p>
+                                    <ul className="list-disc pl-4 text-muted-foreground space-y-0.5">
+                                      {assessment.result.details.strengths.map((s, i) => <li key={i}>{s}</li>)}
+                                    </ul>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* ── Screening Answers ── */}
+                  {selectedApp.customAnswers && selectedApp.customAnswers.length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Screening Answers</p>
+                        <div className="space-y-2">
+                          {selectedApp.customAnswers.map((ans: any, i: number) => (
+                            <div key={ans.questionId || i} className="rounded-2xl border border-border/70 p-3 flex gap-3">
+                              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                                <span className="text-[10px] font-bold text-primary">{i + 1}</span>
+                              </div>
+                              <div className="flex-1 min-w-0 space-y-0.5">
+                                <p className="text-xs font-medium text-foreground">{ans.question || `Question ${i + 1}`}</p>
+                                <p className="text-sm text-muted-foreground">
+                                  {Array.isArray(ans.answer) ? ans.answer.join(', ') : String(ans.answer)}
+                                </p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* ── Questionnaire Responses ── */}
+                  {selectedApp.questionnaireData?.responses && selectedApp.questionnaireData.responses.length > 0 && (
+                    <>
+                      <Separator />
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Questionnaire Responses</p>
+                        <div className="space-y-2">
+                          {selectedApp.questionnaireData.responses.map((resp: any, i: number) => (
+                            <div key={resp.questionId || i} className="rounded-2xl border border-border/70 p-3 flex gap-3">
+                              <div className="w-6 h-6 rounded-full bg-primary/10 flex items-center justify-center shrink-0 mt-0.5">
+                                <span className="text-[10px] font-bold text-primary">{i + 1}</span>
+                              </div>
+                              <div className="flex-1 min-w-0 space-y-0.5">
+                                <p className="text-xs font-medium text-foreground">{resp.question}</p>
+                                <p className="text-sm text-muted-foreground">{resp.answer}</p>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </>
+                  )}
+
+                  {/* ── Recruiter Notes ── */}
                   {selectedApp.recruiterNotes && (
-                    <div>
-                      <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Recruiter Notes</p>
-                      <div className="rounded-2xl border border-border/70 p-3">
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedApp.recruiterNotes}</p>
+                    <>
+                      <Separator />
+                      <div>
+                        <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Recruiter Notes</p>
+                        <div className="rounded-2xl border border-border/70 bg-muted/[0.24] p-4">
+                          <p className="text-sm text-muted-foreground whitespace-pre-wrap">{selectedApp.recruiterNotes}</p>
+                        </div>
                       </div>
-                    </div>
+                    </>
                   )}
 
-                  {/* Actions */}
+                  {/* ── Application Timeline ── */}
+                  <Separator />
+                  <div>
+                    <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Timeline</p>
+                    <div className="relative pl-6 space-y-4 before:absolute before:left-[9px] before:top-1 before:bottom-1 before:w-[2px] before:bg-border">
+                      {/* Applied */}
+                      <div className="relative">
+                        <div className="absolute -left-6 top-0.5 w-[18px] h-[18px] rounded-full bg-primary/10 border-2 border-primary flex items-center justify-center">
+                          <div className="w-1.5 h-1.5 rounded-full bg-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium">Application Submitted</p>
+                          <p className="text-xs text-muted-foreground">{format(new Date(selectedApp.appliedDate), 'PPP')} · {formatDistanceToNow(new Date(selectedApp.appliedDate), { addSuffix: true })}</p>
+                        </div>
+                      </div>
+                      {/* Shortlisted */}
+                      {selectedApp.shortlistedAt && (
+                        <div className="relative">
+                          <div className="absolute -left-6 top-0.5 w-[18px] h-[18px] rounded-full bg-violet-100 dark:bg-violet-950/30 border-2 border-violet-500 flex items-center justify-center">
+                            <Star className="h-2.5 w-2.5 text-violet-500" />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">Shortlisted</p>
+                            <p className="text-xs text-muted-foreground">{format(new Date(selectedApp.shortlistedAt), 'PPP')}</p>
+                          </div>
+                        </div>
+                      )}
+                      {/* Interviews */}
+                      {selectedApp.interviews?.map((interview) => {
+                        const d = interview.scheduledDate || interview.scheduled_date;
+                        return (
+                          <div key={interview.id} className="relative">
+                            <div className="absolute -left-6 top-0.5 w-[18px] h-[18px] rounded-full bg-amber-100 dark:bg-amber-950/30 border-2 border-amber-500 flex items-center justify-center">
+                              <Video className="h-2.5 w-2.5 text-amber-500" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium capitalize">{(interview.type || 'Interview').replace(/_/g, ' ')} — {getInterviewStatusBadge(interview.status)}</p>
+                              {d && <p className="text-xs text-muted-foreground">{format(new Date(d), 'PPP')}</p>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {/* Assessments */}
+                      {selectedApp.assessments?.map((a) => {
+                        const d = a.completedDate || a.completed_date || a.invitedDate || a.invited_date;
+                        return (
+                          <div key={a.id} className="relative">
+                            <div className="absolute -left-6 top-0.5 w-[18px] h-[18px] rounded-full bg-sky-100 dark:bg-sky-950/30 border-2 border-sky-500 flex items-center justify-center">
+                              <ClipboardList className="h-2.5 w-2.5 text-sky-500" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium capitalize">{(a.assessmentType || a.assessment_type || 'Assessment').replace(/_/g, ' ').replace(/-/g, ' ')} — {getAssessmentStatusBadge(a.status)}</p>
+                              {d && <p className="text-xs text-muted-foreground">{format(new Date(d), 'PPP')}</p>}
+                            </div>
+                          </div>
+                        );
+                      })}
+                      {/* Current status */}
+                      {selectedApp.status !== 'NEW' && (
+                        <div className="relative">
+                          <div className={cn(
+                            "absolute -left-6 top-0.5 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center",
+                            selectedApp.status === 'HIRED' && "bg-emerald-100 dark:bg-emerald-950/30 border-emerald-500",
+                            selectedApp.status === 'REJECTED' && "bg-rose-100 dark:bg-rose-950/30 border-rose-500",
+                            selectedApp.status === 'WITHDRAWN' && "bg-muted border-muted-foreground",
+                            !['HIRED', 'REJECTED', 'WITHDRAWN'].includes(selectedApp.status) && "bg-primary/10 border-primary",
+                          )}>
+                            <div className={cn(
+                              "w-1.5 h-1.5 rounded-full",
+                              selectedApp.status === 'HIRED' && "bg-emerald-500",
+                              selectedApp.status === 'REJECTED' && "bg-rose-500",
+                              selectedApp.status === 'WITHDRAWN' && "bg-muted-foreground",
+                              !['HIRED', 'REJECTED', 'WITHDRAWN'].includes(selectedApp.status) && "bg-primary",
+                            )} />
+                          </div>
+                          <div>
+                            <p className="text-sm font-medium">Status: {selectedApp.status.replace(/_/g, ' ')}</p>
+                            <p className="text-xs text-muted-foreground">{format(new Date(selectedApp.updatedAt), 'PPP')}</p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* ── Actions ── */}
                   <Separator />
                   <div className="flex items-center gap-2 pb-4">
                     {canWithdraw(selectedApp.status) && (
