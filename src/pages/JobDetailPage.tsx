@@ -17,7 +17,6 @@ import {
   MapPin,
   Briefcase,
   Clock,
-  DollarSign,
   Building2,
   ArrowLeft,
   Loader2,
@@ -105,14 +104,6 @@ function formatSalary(job: PublicJob) {
     range += ` ${periodMap[period] || ''}`;
   }
   return range;
-}
-
-function formatSalaryPeriodShort(period?: string) {
-  if (!period) return '';
-  const map: Record<string, string> = {
-    'hourly': '/hr', 'daily': '/day', 'weekly': '/wk', 'monthly': '/mo', 'annual': '/yr',
-  };
-  return map[period] || '';
 }
 
 /* ── component ── */
