@@ -5,10 +5,19 @@ import { AppRoutes } from './app/routes'
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      staleTime: 1000 * 60 * 5,  // 5 min  - after this, background refetch fires on next visit
-      gcTime: 1000 * 60 * 30,    // 30 min - data stays in memory even after stale, no spinner on back-navigation
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30,
       refetchOnWindowFocus: false,
-      retry: 1,
+      retry: (failureCount, error: any) => {
+        if (error?.status >= 400 && error?.status < 500) return false;
+        return failureCount < 1;
+      },
+    },
+    mutations: {
+      onError: (error: any) => {
+        const message = error?.message || 'Something went wrong. Please try again.';
+        import('sonner').then(({ toast }) => toast.error(message));
+      },
     },
   },
 })
