@@ -141,12 +141,6 @@ interface ApplicationWithDetails extends Application {
   jobDetails?: JobDetails;
   interviews?: VideoInterview[];
   detailsLoaded?: boolean;
-  customAnswers?: Array<{ questionId: string; question?: string; answer: string | string[] }>;
-  questionnaireData?: { responses?: Array<{ questionId: string; question: string; answer: string; type: string }> };
-  score?: number;
-  rank?: number;
-  shortlisted?: boolean;
-  recruiterNotes?: string;
   screeningStatus?: string;
   screening_status?: string;
 }
