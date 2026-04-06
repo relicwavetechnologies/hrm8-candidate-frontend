@@ -13,6 +13,7 @@ import {
   type ReactNode,
 } from 'react';
 import { toast } from '@/shared/hooks/use-toast';
+import { toast as sonnerToast } from 'sonner';
 import type {
   ConnectionState,
   WSMessage,
@@ -78,6 +79,7 @@ export function WebSocketProvider({
   const [currentConversationId, setCurrentConversationId] = useState<
     string | null
   >(null);
+  const [unreadNotificationCount, setUnreadNotificationCount] = useState(0);
   const authFailureNotifiedRef = useRef(false);
 
   const currentConversationIdRef = useRef<string | null>(null);
@@ -264,10 +266,21 @@ export function WebSocketProvider({
             return;
           }
           console.log('🔔 Notification received:', message.payload);
+          setUnreadNotificationCount((prev) => prev + 1);
+          sonnerToast(notificationPayload.title || 'New Notification', {
+            description: notificationPayload.message || notificationPayload.body || undefined,
+            duration: 5000,
+          });
           break;
 
         case 'notifications_count':
           console.log('🔢 Notification count update:', message.payload);
+          const countPayload = message.payload as any;
+          if (typeof countPayload?.count === 'number') {
+            setUnreadNotificationCount(countPayload.count);
+          } else if (typeof countPayload?.unreadCount === 'number') {
+            setUnreadNotificationCount(countPayload.unreadCount);
+          }
           break;
 
         default:
@@ -439,6 +452,11 @@ export function WebSocketProvider({
     };
   }, [disconnect]);
 
+  // Reset notification count (e.g. when user views notifications page)
+  const resetNotificationCount = useCallback(() => {
+    setUnreadNotificationCount(0);
+  }, []);
+
   // Leave current conversation
   const leaveConversation = useCallback(() => {
     setCurrentConversationId(null);
@@ -461,6 +479,8 @@ export function WebSocketProvider({
     setConversations,
     addMessage,
     onMessage,
+    unreadNotificationCount,
+    resetNotificationCount,
   };
 
   return (

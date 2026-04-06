@@ -113,24 +113,15 @@ function formatSalary(min?: number, max?: number, currency?: string) {
   return `Up to ${fmt.format(max!)}`;
 }
 
-/* ── pipeline stages ── */
+/* ── pipeline round types ── */
 
-const PIPELINE_STAGES = [
-  { key: 'NEW', label: 'Applied', icon: FileText },
-  { key: 'SCREENING', label: 'Screening', icon: Search },
-  { key: 'SHORTLISTED', label: 'Shortlisted', icon: Star },
-  { key: 'INTERVIEW', label: 'Interview', icon: Video },
-  { key: 'OFFER', label: 'Offer', icon: Award },
-  { key: 'HIRED', label: 'Hired', icon: CheckCircle2 },
-];
-
-function getStageIndex(status: string): number {
-  const map: Record<string, number> = {
-    'NEW': 0, 'SCREENING': 1, 'UNDER_REVIEW': 1, 'SHORTLISTED': 2,
-    'INTERVIEW': 3, 'INTERVIEW_SCHEDULED': 3, 'INTERVIEWED': 3,
-    'OFFER': 4, 'OFFERED': 4, 'HIRED': 5,
-  };
-  return map[status] ?? -1;
+interface JobRound {
+  id: string;
+  name: string;
+  order: number;
+  fixed_key?: string | null;
+  candidate_facing_label?: string | null;
+  type?: string | null;
 }
 
 /* ── types ── */
@@ -216,6 +207,8 @@ interface ApplicationWithDetails extends Application {
   detailsLoaded?: boolean;
   screeningStatus?: string;
   screening_status?: string;
+  jobRounds?: JobRound[];
+  currentJobRoundId?: string | null;
 }
 
 /* ── component ── */
@@ -262,6 +255,8 @@ export default function ApplicationsPage() {
         ...app,
         appliedDate: app.appliedDate || app.createdAt || new Date().toISOString(),
         detailsLoaded: false,
+        currentJobRoundId: app.currentJobRoundId || app.current_job_round_id || null,
+        jobRounds: app.job?.job_rounds || app.job?.jobRounds || [],
         jobDetails: app.job ? {
           id: app.job.id,
           title: app.job.title,
@@ -358,6 +353,8 @@ export default function ApplicationsPage() {
             ...ans,
             question: questionMap[ans.questionId] || ans.question || null,
           }));
+          const fullJob = (fullApp as any).job;
+          const updatedJobRounds = fullJob?.job_rounds || fullJob?.jobRounds || app.jobRounds || [];
           const updated: ApplicationWithDetails = {
             ...app,
             ...fullApp,
@@ -365,9 +362,11 @@ export default function ApplicationsPage() {
             interviews: interviews.length > 0 ? interviews : app.interviews,
             assessments: assessments.length > 0 ? assessments : app.assessments,
             detailsLoaded: true,
-            jobDetails: (fullApp as any).job ? {
+            currentJobRoundId: (fullApp as any).currentJobRoundId || (fullApp as any).current_job_round_id || app.currentJobRoundId,
+            jobRounds: updatedJobRounds.length > 0 ? updatedJobRounds : app.jobRounds,
+            jobDetails: fullJob ? {
               ...app.jobDetails!,
-              ...((fullApp as any).job)
+              ...(fullJob)
             } : app.jobDetails,
           };
           setSelectedApp(updated);
@@ -527,9 +526,41 @@ export default function ApplicationsPage() {
 
   const getScoreColor = (score: number) => {
     if (score >= 80) return 'text-emerald-600';
-    if (score >= 60) return 'text-amber-600';
-    if (score >= 40) return 'text-orange-600';
+    if (score >= 50) return 'text-amber-600';
     return 'text-rose-600';
+  };
+
+  const getScoreBgColor = (score: number) => {
+    if (score >= 80) return 'bg-emerald-500';
+    if (score >= 50) return 'bg-amber-500';
+    return 'bg-rose-500';
+  };
+
+  const getScoreRingColor = (score: number) => {
+    if (score >= 80) return 'stroke-emerald-500';
+    if (score >= 50) return 'stroke-amber-500';
+    return 'stroke-rose-500';
+  };
+
+  /** Small circular progress indicator for scores */
+  const ScoreBadge = ({ score, size = 'sm' }: { score: number; size?: 'sm' | 'lg' }) => {
+    const radius = size === 'lg' ? 28 : 14;
+    const circumference = 2 * Math.PI * radius;
+    const offset = circumference - (score / 100) * circumference;
+    const dim = size === 'lg' ? 64 : 36;
+    const strokeW = size === 'lg' ? 5 : 3;
+
+    return (
+      <div className="relative inline-flex items-center justify-center" style={{ width: dim, height: dim }}>
+        <svg width={dim} height={dim} className="-rotate-90">
+          <circle cx={dim / 2} cy={dim / 2} r={radius} fill="none" stroke="currentColor" className="text-muted/30" strokeWidth={strokeW} />
+          <circle cx={dim / 2} cy={dim / 2} r={radius} fill="none" className={getScoreRingColor(score)} strokeWidth={strokeW} strokeLinecap="round" strokeDasharray={circumference} strokeDashoffset={offset} style={{ transition: 'stroke-dashoffset 0.5s ease' }} />
+        </svg>
+        <span className={cn("absolute text-center font-bold leading-none", size === 'lg' ? 'text-base' : 'text-[10px]', getScoreColor(score))}>
+          {score}
+        </span>
+      </div>
+    );
   };
 
   const canWithdraw = (status: string) => !['WITHDRAWN', 'REJECTED', 'HIRED'].includes(status);
@@ -554,20 +585,47 @@ export default function ApplicationsPage() {
   React.useEffect(() => { setVisibleCount(APPLICATIONS_PER_PAGE); }, [searchQuery, statusFilter]);
 
   /* ── Pipeline Progress Component ── */
-  const PipelineProgress = ({ status }: { status: string }) => {
+  const PipelineProgress = ({ status, rounds, currentJobRoundId }: { status: string; rounds?: JobRound[]; currentJobRoundId?: string | null }) => {
+    // Filter out REJECTED from display rounds - it's shown as a separate banner
+    const displayRounds = (rounds || []).filter(r => r.fixed_key !== 'REJECTED');
+
+    // If no rounds available, show nothing (the status badge is still shown separately)
+    if (displayRounds.length === 0) return null;
+
+    // Find current round index by matching currentJobRoundId
+    let currentIdx = -1;
+    if (currentJobRoundId) {
+      currentIdx = displayRounds.findIndex(r => r.id === currentJobRoundId);
+    }
+    // Fallback: try matching by fixed_key against status
+    if (currentIdx === -1 && status) {
+      const statusToFixedKey: Record<string, string[]> = {
+        'NEW': ['NEW'],
+        'SCREENING': ['SCREENING'], 'UNDER_REVIEW': ['SCREENING'],
+        'SHORTLISTED': ['SHORTLISTED'],
+        'INTERVIEW': ['INTERVIEW'], 'INTERVIEW_SCHEDULED': ['INTERVIEW'], 'INTERVIEWED': ['INTERVIEW'],
+        'OFFER': ['OFFER'], 'OFFERED': ['OFFER'],
+        'HIRED': ['HIRED'],
+      };
+      const possibleKeys = statusToFixedKey[status] || [];
+      for (const key of possibleKeys) {
+        const idx = displayRounds.findIndex(r => r.fixed_key === key);
+        if (idx !== -1) { currentIdx = idx; break; }
+      }
+    }
+
     const isTerminal = ['REJECTED', 'WITHDRAWN'].includes(status);
-    const currentIdx = getStageIndex(status);
 
     return (
       <div className="flex items-center gap-1 w-full">
-        {PIPELINE_STAGES.map((stage, idx) => {
-          const Icon = stage.icon;
+        {displayRounds.map((round, idx) => {
+          const label = round.candidate_facing_label || round.name;
           const isActive = idx === currentIdx;
-          const isCompleted = !isTerminal && idx < currentIdx;
-          const isFuture = isTerminal || idx > currentIdx;
+          const isCompleted = !isTerminal && currentIdx >= 0 && idx < currentIdx;
+          const isFuture = isTerminal || idx > currentIdx || currentIdx < 0;
 
           return (
-            <React.Fragment key={stage.key}>
+            <React.Fragment key={round.id}>
               <div className="flex flex-col items-center gap-1 flex-1 min-w-0">
                 <div className={cn(
                   "w-7 h-7 rounded-full flex items-center justify-center transition-all",
@@ -575,7 +633,7 @@ export default function ApplicationsPage() {
                   isCompleted && "bg-emerald-100 text-emerald-600 dark:bg-emerald-950/30 dark:text-emerald-400",
                   isFuture && "bg-muted text-muted-foreground/40",
                 )}>
-                  {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : <Icon className="h-3.5 w-3.5" />}
+                  {isCompleted ? <CheckCircle2 className="h-3.5 w-3.5" /> : <ArrowRight className="h-3.5 w-3.5" />}
                 </div>
                 <span className={cn(
                   "text-[9px] font-medium uppercase tracking-wider text-center leading-tight",
@@ -583,10 +641,10 @@ export default function ApplicationsPage() {
                   isCompleted && "text-emerald-600 dark:text-emerald-400",
                   isFuture && "text-muted-foreground/40",
                 )}>
-                  {stage.label}
+                  {label}
                 </span>
               </div>
-              {idx < PIPELINE_STAGES.length - 1 && (
+              {idx < displayRounds.length - 1 && (
                 <div className={cn(
                   "h-[2px] w-4 flex-shrink-0 rounded-full mt-[-14px]",
                   isCompleted ? "bg-emerald-300 dark:bg-emerald-700" : "bg-border",
@@ -742,10 +800,15 @@ export default function ApplicationsPage() {
                                   {app.jobDetails.location}
                                 </span>
                               )}
-                              {app.score !== undefined && app.score !== null && (
-                                <span className={cn("inline-flex items-center gap-1.5 font-medium", getScoreColor(app.score))}>
+                              {app.score !== undefined && app.score !== null ? (
+                                <span className="inline-flex items-center gap-1.5 font-medium">
+                                  <ScoreBadge score={app.score} size="sm" />
+                                  <span className={getScoreColor(app.score)}>{app.score}% Match</span>
+                                </span>
+                              ) : (
+                                <span className="inline-flex items-center gap-1.5 text-muted-foreground text-xs italic">
                                   <TrendingUp className="h-3.5 w-3.5" />
-                                  {app.score}% Match
+                                  Pending
                                 </span>
                               )}
                             </div>
@@ -855,9 +918,9 @@ export default function ApplicationsPage() {
                   </div>
 
                   {/* Pipeline progress bar */}
-                  {!['REJECTED', 'WITHDRAWN'].includes(selectedApp.status) && (
+                  {!['REJECTED', 'WITHDRAWN'].includes(selectedApp.status) && selectedApp.jobRounds && selectedApp.jobRounds.length > 0 && (
                     <div className="pt-1">
-                      <PipelineProgress status={selectedApp.status} />
+                      <PipelineProgress status={selectedApp.status} rounds={selectedApp.jobRounds} currentJobRoundId={selectedApp.currentJobRoundId} />
                     </div>
                   )}
                   {selectedApp.status === 'REJECTED' && (
@@ -886,12 +949,20 @@ export default function ApplicationsPage() {
                 <div className="p-6 space-y-6 flex-1">
 
                   {/* ── Scoring & Status metrics ── */}
-                  {(selectedApp.score !== undefined && selectedApp.score !== null) || selectedApp.rank || selectedApp.shortlisted ? (
-                    <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
-                      {selectedApp.score !== undefined && selectedApp.score !== null && (
+                  <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
+                      {selectedApp.score !== undefined && selectedApp.score !== null ? (
+                        <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-4 py-3 flex flex-col items-center">
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Fit Score</p>
+                          <div className="mt-1"><ScoreBadge score={selectedApp.score} size="lg" /></div>
+                          <div className="w-full mt-2 h-1.5 rounded-full bg-muted overflow-hidden">
+                            <div className={cn("h-full rounded-full transition-all duration-500", getScoreBgColor(selectedApp.score))} style={{ width: `${selectedApp.score}%` }} />
+                          </div>
+                          <p className={cn("text-xs mt-1", getScoreColor(selectedApp.score))}>{selectedApp.score}/100</p>
+                        </div>
+                      ) : (
                         <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-4 py-3 text-center">
                           <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Fit Score</p>
-                          <p className={cn("text-2xl font-bold mt-1", getScoreColor(selectedApp.score))}>{selectedApp.score}<span className="text-sm font-normal text-muted-foreground">/100</span></p>
+                          <p className="text-lg font-medium mt-1 text-muted-foreground italic">Pending</p>
                         </div>
                       )}
                       {selectedApp.rank && (
@@ -912,8 +983,7 @@ export default function ApplicationsPage() {
                           <p className="text-sm font-semibold mt-1.5">{String(selectedApp.stage).replace(/_/g, ' ')}</p>
                         </div>
                       )}
-                    </div>
-                  ) : null}
+                  </div>
 
                   {/* Tags */}
                   {selectedApp.tags && selectedApp.tags.length > 0 && (
@@ -1387,70 +1457,7 @@ export default function ApplicationsPage() {
                     </>
                   )}
 
-                  {/* ── Recruiter Notes ── */}
-                  {selectedApp.recruiterNotes && (() => {
-                    // Parse notes — could be a JSON array of note objects or a plain string
-                    let notes: Array<{ id?: string; content?: string; createdAt?: string; metadata?: { kind?: string; decision?: string; roundKey?: string }; author?: { name?: string } }> = [];
-                    try {
-                      const raw = typeof selectedApp.recruiterNotes === 'string'
-                        ? JSON.parse(selectedApp.recruiterNotes)
-                        : selectedApp.recruiterNotes;
-                      if (Array.isArray(raw)) notes = raw;
-                    } catch {
-                      // Plain string fallback
-                      notes = [{ content: String(selectedApp.recruiterNotes) }];
-                    }
-                    if (notes.length === 0) return null;
-
-                    return (
-                      <>
-                        <Separator />
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Recruiter Notes</p>
-                          <div className="space-y-2">
-                            {notes.map((note: any, idx: number) => {
-                              const kind = note.metadata?.kind;
-                              const decision = note.metadata?.decision;
-                              const isDecision = kind === 'REVIEW_DECISION';
-                              return (
-                                <div key={note.id || idx} className="rounded-xl border border-border/60 bg-muted/20 px-3.5 py-2.5">
-                                  <div className="flex items-start justify-between gap-2 mb-1">
-                                    <div className="flex items-center gap-1.5">
-                                      {isDecision && (
-                                        <span className={`inline-flex items-center rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
-                                          decision === 'APPROVE' ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                          : decision === 'REJECT' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400'
-                                          : 'bg-muted text-muted-foreground'
-                                        }`}>
-                                          {decision === 'APPROVE' ? 'Approved' : decision === 'REJECT' ? 'Rejected' : decision}
-                                        </span>
-                                      )}
-                                      {!isDecision && kind === 'ROUND_NOTE' && (
-                                        <span className="inline-flex items-center rounded-md bg-blue-100 px-1.5 py-0.5 text-[10px] font-semibold text-blue-700 dark:bg-blue-900/30 dark:text-blue-400">
-                                          Note
-                                        </span>
-                                      )}
-                                      {note.author?.name && (
-                                        <span className="text-xs text-muted-foreground">{note.author.name}</span>
-                                      )}
-                                    </div>
-                                    {note.createdAt && (
-                                      <span className="text-[10px] text-muted-foreground/60 shrink-0">
-                                        {new Date(note.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                                      </span>
-                                    )}
-                                  </div>
-                                  {note.content && (
-                                    <p className="text-sm text-foreground/80 whitespace-pre-wrap">{note.content}</p>
-                                  )}
-                                </div>
-                              );
-                            })}
-                          </div>
-                        </div>
-                      </>
-                    );
-                  })()}
+                  {/* Recruiter Notes removed — internal-only data, not shown to candidates */}
 
                   {/* ── Application Timeline ── */}
                   <Separator />

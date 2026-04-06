@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import {
+  Bell,
   Bookmark,
   Briefcase,
   ClipboardCheck,
@@ -28,6 +29,7 @@ import {
 } from '@/shared/components/ui/sidebar'
 import { cn } from '@/shared/lib/utils'
 import { useCandidateAuth } from '@/contexts/CandidateAuthContext'
+import { useWebSocket } from '@/contexts/WebSocketContext'
 import { CandidateSidebarFooter } from './CandidateSidebarFooter'
 
 const menuItems = [
@@ -39,6 +41,7 @@ const menuItems = [
   { path: '/candidate/applications', label: 'Applications', icon: FileText },
   { path: '/candidate/saved-jobs', label: 'Saved Jobs', icon: Bookmark },
   { path: '/candidate/assessments', label: 'Assessments', icon: ClipboardCheck },
+  { path: '/candidate/notifications', label: 'Notifications', icon: Bell },
   { path: '/candidate/messages', label: 'Messages', icon: MessageSquare },
 ]
 
@@ -46,6 +49,7 @@ export function CandidateSidebar() {
   const location = useLocation()
   const { open } = useSidebar()
   const { candidate } = useCandidateAuth()
+  const { unreadNotificationCount } = useWebSocket()
   const [isHovering, setIsHovering] = useState(false)
 
   const isExpanded = open || (!open && isHovering)
@@ -123,13 +127,29 @@ export function CandidateSidebar() {
                         to={item.path}
                         className="flex w-full items-center gap-3"
                       >
-                        <Icon
-                          className={cn(
-                            'h-5 w-5 transition-all',
-                            !isExpanded && 'mx-auto'
+                        <span className="relative inline-flex">
+                          <Icon
+                            className={cn(
+                              'h-5 w-5 transition-all',
+                              !isExpanded && 'mx-auto'
+                            )}
+                          />
+                          {item.path === '/candidate/notifications' && unreadNotificationCount > 0 && !isExpanded && (
+                            <span className="absolute -top-1.5 -right-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
+                              {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                            </span>
                           )}
-                        />
-                        {isExpanded && <span>{item.label}</span>}
+                        </span>
+                        {isExpanded && (
+                          <span className="flex flex-1 items-center justify-between">
+                            <span>{item.label}</span>
+                            {item.path === '/candidate/notifications' && unreadNotificationCount > 0 && (
+                              <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-destructive px-1.5 text-[10px] font-bold text-destructive-foreground">
+                                {unreadNotificationCount > 99 ? '99+' : unreadNotificationCount}
+                              </span>
+                            )}
+                          </span>
+                        )}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>

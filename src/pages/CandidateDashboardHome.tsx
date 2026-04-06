@@ -20,8 +20,13 @@ import {
   Briefcase,
   FileText,
   Bell,
+  Video,
+  Phone,
+  MapPin,
+  Calendar,
+  ExternalLink,
 } from 'lucide-react';
-import { formatDistanceToNow } from 'date-fns';
+import { formatDistanceToNow, format } from 'date-fns';
 import { ScrollArea } from '@/shared/components/ui/scroll-area';
 import { useToast } from '@/shared/hooks/use-toast';
 
@@ -33,12 +38,15 @@ export default function CandidateDashboardHome() {
   const [profileCompleteness, setProfileCompleteness] = useState(0);
   const [recommendedJobs, setRecommendedJobs] = useState<any[]>([]);
   const [loadingJobs, setLoadingJobs] = useState(false);
+  const [upcomingInterviews, setUpcomingInterviews] = useState<any[]>([]);
+  const [loadingInterviews, setLoadingInterviews] = useState(false);
   const { toast } = useToast();
 
   useEffect(() => {
     loadRecentApplications();
     loadNotifications();
     loadRecommendedJobs();
+    loadUpcomingInterviews();
     calculateProfileCompleteness();
   }, [candidate]);
 
@@ -55,6 +63,22 @@ export default function CandidateDashboardHome() {
       console.error('Failed to load recommended jobs:', error);
     } finally {
       setLoadingJobs(false);
+    }
+  };
+
+  const loadUpcomingInterviews = async () => {
+    if (!candidate) return;
+    setLoadingInterviews(true);
+    try {
+      const { apiClient } = await import('@/shared/services/api');
+      const response = await apiClient.get<any[]>('/api/candidate/notifications/upcoming-interviews?daysAhead=7');
+      if (response.success && response.data) {
+        setUpcomingInterviews(response.data);
+      }
+    } catch (error) {
+      console.error('Failed to load upcoming interviews:', error);
+    } finally {
+      setLoadingInterviews(false);
     }
   };
 
@@ -119,6 +143,36 @@ export default function CandidateDashboardHome() {
     if (candidate.photo) completed++;
 
     setProfileCompleteness(Math.round((completed / total) * 100));
+  };
+
+  const getInterviewTypeIcon = (type: string) => {
+    switch (type?.toLowerCase()) {
+      case 'video':
+        return <Video className="h-4 w-4" />;
+      case 'phone':
+        return <Phone className="h-4 w-4" />;
+      case 'in-person':
+      case 'in_person':
+      case 'onsite':
+        return <MapPin className="h-4 w-4" />;
+      default:
+        return <Calendar className="h-4 w-4" />;
+    }
+  };
+
+  const getInterviewTypeLabel = (type: string) => {
+    switch (type?.toLowerCase()) {
+      case 'video':
+        return 'Video Call';
+      case 'phone':
+        return 'Phone Call';
+      case 'in-person':
+      case 'in_person':
+      case 'onsite':
+        return 'In-Person';
+      default:
+        return type || 'Interview';
+    }
   };
 
   const getStatusBadge = (status: string) => {
@@ -232,7 +286,77 @@ export default function CandidateDashboardHome() {
           </Card>
         </div>
 
-
+        {/* Upcoming Interviews */}
+        <Card className="overflow-hidden border-border/40 shadow-sm">
+          <CardHeader className="py-4 px-6 border-b bg-muted/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/60 mb-1">This Week</p>
+                <CardTitle className="text-base font-bold tracking-tight text-foreground/90">Upcoming Interviews</CardTitle>
+              </div>
+              <Calendar className="h-4 w-4 text-muted-foreground/40" />
+            </div>
+          </CardHeader>
+          <CardContent className="p-4">
+            {loadingInterviews ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground animate-pulse">
+                <div className="w-12 h-12 rounded-full bg-muted mb-4" />
+                <div className="h-4 w-40 bg-muted rounded" />
+              </div>
+            ) : upcomingInterviews.length === 0 ? (
+              <div className="flex flex-col items-center justify-center py-8 text-muted-foreground">
+                <Calendar className="h-6 w-6 opacity-30 mb-2" />
+                <p className="text-sm font-semibold">No upcoming interviews</p>
+                <p className="text-xs text-muted-foreground/60 mt-1">You're all clear for the next 7 days</p>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                {upcomingInterviews.map((interview: any) => (
+                  <div
+                    key={interview.id}
+                    className="group rounded-2xl border border-border/40 p-4 hover:bg-muted/30 transition-all duration-200"
+                  >
+                    <div className="flex items-start justify-between gap-2 mb-3">
+                      <div className="min-w-0 flex-1">
+                        <h4 className="text-sm font-bold truncate text-foreground/90">
+                          {interview.jobTitle || interview.job?.title || 'Interview'}
+                        </h4>
+                        <p className="text-xs text-muted-foreground font-semibold truncate">
+                          {interview.companyName || interview.company?.name || 'Company'}
+                        </p>
+                      </div>
+                      <Badge
+                        variant="outline"
+                        className="h-5 px-2 text-[10px] font-bold rounded-full bg-primary/10 text-primary border-primary/20 shrink-0 flex items-center gap-1"
+                      >
+                        {getInterviewTypeIcon(interview.type || interview.interviewType)}
+                        <span>{getInterviewTypeLabel(interview.type || interview.interviewType)}</span>
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-medium mb-3">
+                      <Calendar className="h-3.5 w-3.5 shrink-0" />
+                      <span>
+                        {interview.scheduledAt || interview.dateTime
+                          ? format(new Date(interview.scheduledAt || interview.dateTime), 'EEE, MMM d · h:mm a')
+                          : 'Time TBD'}
+                      </span>
+                    </div>
+                    {(interview.meetingLink || interview.link) && (
+                      <Button
+                        size="sm"
+                        className="w-full text-xs font-bold"
+                        onClick={() => window.open(interview.meetingLink || interview.link, '_blank')}
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 mr-1.5" />
+                        Join Meeting
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Recommended Jobs & Notifications */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

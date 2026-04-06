@@ -3,7 +3,7 @@
  * Comprehensive profile management with all candidate information
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { useCandidateAuth } from '@/contexts/CandidateAuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/shared/components/ui/card';
 import { CandidatePageLayout } from '@/shared/components/layouts/CandidatePageLayout';
@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/shared/components/ui/switch';
 import { useToast } from '@/shared/hooks/use-toast';
 import { apiClient } from '@/shared/services/api';
-import { Loader2, User, Briefcase, Shield, Globe, DollarSign, MapPin } from 'lucide-react';
+import { Loader2, User, Briefcase, Shield, Globe, DollarSign, MapPin, Camera } from 'lucide-react';
 import { Separator } from '@/shared/components/ui/separator';
 import { DeveloperTools } from '@/shared/components/dev/DeveloperTools';
 
@@ -24,6 +24,75 @@ export default function ProfilePage() {
   const { candidate, refreshCandidate } = useCandidateAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement>(null);
+
+  const getInitials = useCallback(() => {
+    const first = candidate?.firstName?.[0] || '';
+    const last = candidate?.lastName?.[0] || '';
+    return (first + last).toUpperCase() || '?';
+  }, [candidate?.firstName, candidate?.lastName]);
+
+  const handlePhotoSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Reset the input so the same file can be re-selected
+    e.target.value = '';
+
+    // Validate file type
+    const allowedTypes = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowedTypes.includes(file.type)) {
+      toast({
+        title: 'Invalid file type',
+        description: 'Please upload a JPEG, PNG, or WebP image.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Validate file size (5MB max)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        title: 'File too large',
+        description: 'Photo must be under 5MB.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+    try {
+      // Step 1: Upload image to /api/upload
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('type', 'profile-photo');
+      const uploadRes = await apiClient.post('/api/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      });
+      const photoUrl = uploadRes.data?.data?.url || uploadRes.data?.url;
+      if (!photoUrl) throw new Error('Upload succeeded but no URL returned');
+
+      // Step 2: Update candidate profile with the new photo URL
+      await apiClient.put('/api/candidate/profile', { photo: photoUrl });
+
+      // Step 3: Refresh auth context so the UI updates everywhere
+      await refreshCandidate();
+
+      toast({
+        title: 'Photo updated',
+        description: 'Your profile photo has been updated successfully.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Photo upload failed',
+        description: error.response?.data?.error || error.message || 'Failed to upload photo',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUploadingPhoto(false);
+    }
+  };
   const [formData, setFormData] = useState({
     // Personal Information
     firstName: candidate?.firstName || '',
@@ -141,6 +210,49 @@ export default function ProfilePage() {
               <CardDescription className="text-sm">Your basic contact and location details</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {/* Avatar / Photo Upload */}
+              <div className="flex items-center gap-4">
+                <div
+                  className="relative group cursor-pointer"
+                  onClick={() => !isUploadingPhoto && photoInputRef.current?.click()}
+                >
+                  {candidate?.photo ? (
+                    <img
+                      src={candidate.photo}
+                      alt={`${candidate.firstName} ${candidate.lastName}`}
+                      className="h-20 w-20 rounded-full object-cover border-2 border-muted"
+                    />
+                  ) : (
+                    <div className="h-20 w-20 rounded-full bg-primary/10 border-2 border-muted flex items-center justify-center">
+                      <span className="text-xl font-semibold text-primary">{getInitials()}</span>
+                    </div>
+                  )}
+                  {/* Hover overlay */}
+                  <div className="absolute inset-0 rounded-full bg-black/50 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                    {isUploadingPhoto ? (
+                      <Loader2 className="h-5 w-5 text-white animate-spin" />
+                    ) : (
+                      <Camera className="h-5 w-5 text-white" />
+                    )}
+                  </div>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    className="hidden"
+                    onChange={handlePhotoSelect}
+                  />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-medium">Profile Photo</p>
+                  <p className="text-xs text-muted-foreground">
+                    Click to upload. JPEG, PNG, or WebP. Max 5MB.
+                  </p>
+                </div>
+              </div>
+
+              <Separator />
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label htmlFor="firstName">First Name *</Label>

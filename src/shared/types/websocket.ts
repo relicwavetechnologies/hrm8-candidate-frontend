@@ -131,5 +131,7 @@ export interface WebSocketContextType {
   setConversations: (conversations: ConversationData[]) => void;
   addMessage: (conversationId: string, message: MessageData) => void;
   onMessage?: (type: string, handler: (payload: unknown) => void) => () => void;
+  unreadNotificationCount: number;
+  resetNotificationCount: () => void;
 }
 

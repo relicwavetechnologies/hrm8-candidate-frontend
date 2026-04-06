@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom'
 import { SidebarInset, SidebarProvider, SidebarRail } from '@/shared/components/ui/sidebar'
 import { useSidebarState } from '@/shared/hooks/useSidebarState'
 import { CandidateSidebar } from './CandidateSidebar'
+import { CandidateAiCopilot } from '@/shared/components/CandidateAiCopilot'
 
 export function CandidateLayout() {
   const { open, setOpen } = useSidebarState('candidate')
@@ -13,6 +14,7 @@ export function CandidateLayout() {
       <SidebarInset className="bg-background">
         <Outlet />
       </SidebarInset>
+      <CandidateAiCopilot />
     </SidebarProvider>
   )
 }
