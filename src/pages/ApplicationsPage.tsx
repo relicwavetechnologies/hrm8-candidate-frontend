@@ -795,7 +795,7 @@ export default function ApplicationsPage() {
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Screening Answers</p>
                       <div className="space-y-3">
-                        {selectedApp.customAnswers.map((ans, i) => (
+                        {selectedApp.customAnswers.map((ans: any, i: number) => (
                           <div key={ans.questionId || i} className="rounded-2xl border border-border/70 p-3 space-y-1">
                             <p className="text-xs font-medium text-foreground">{ans.question || `Question ${i + 1}`}</p>
                             <p className="text-sm text-muted-foreground">
@@ -812,7 +812,7 @@ export default function ApplicationsPage() {
                     <div>
                       <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground mb-3">Questionnaire Responses</p>
                       <div className="space-y-3">
-                        {selectedApp.questionnaireData.responses.map((resp, i) => (
+                        {selectedApp.questionnaireData.responses.map((resp: any, i: number) => (
                           <div key={resp.questionId || i} className="rounded-2xl border border-border/70 p-3 space-y-1">
                             <p className="text-xs font-medium text-foreground">{resp.question}</p>
                             <p className="text-sm text-muted-foreground">{resp.answer}</p>
