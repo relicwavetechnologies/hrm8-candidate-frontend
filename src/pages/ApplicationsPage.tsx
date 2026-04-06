@@ -146,7 +146,6 @@ interface ApplicationWithDetails extends Application {
   score?: number;
   rank?: number;
   shortlisted?: boolean;
-  tags?: string[];
   recruiterNotes?: string;
   screeningStatus?: string;
   screening_status?: string;
