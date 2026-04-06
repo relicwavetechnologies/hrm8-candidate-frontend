@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/sha
 import { Loader2, CheckCircle, XCircle } from 'lucide-react';
 import { candidateAuthService } from '@/shared/services/candidateAuthService';
 
+const LAST_VERIFICATION_KEY = 'candidateLastVerification';
+
 export default function VerifyEmailPage() {
     const [searchParams] = useSearchParams();
     const token = searchParams.get('token');
@@ -33,6 +35,13 @@ export default function VerifyEmailPage() {
                 if (response.success) {
                     setStatus('success');
                     setMessage(response.data?.message || 'Email verified successfully!');
+                    localStorage.setItem(
+                        LAST_VERIFICATION_KEY,
+                        JSON.stringify({
+                            email: response.data?.candidate?.email || '',
+                            timestamp: new Date().toISOString(),
+                        })
+                    );
                 } else {
                     setStatus('error');
                     setMessage(response.error || 'Verification failed. The link may have expired or is invalid.');

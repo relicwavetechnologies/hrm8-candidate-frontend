@@ -104,6 +104,13 @@ class CandidateAuthService {
     return apiClient.get<CandidateVerifyEmailResponse>(`/api/candidate/auth/verify-email?token=${token}`);
   }
 
+  async resendVerification(email: string) {
+    return apiClient.post<{ message: string; email?: string; expiresAt?: string }>(
+      '/api/candidate/auth/resend-verification',
+      { email }
+    );
+  }
+
   async resetPassword(data: CandidateResetPasswordRequest) {
     return apiClient.post<CandidateResetPasswordResponse>('/api/candidate/auth/reset-password', data);
   }

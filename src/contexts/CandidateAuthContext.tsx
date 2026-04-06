@@ -9,11 +9,16 @@ import { candidateAuthService } from '@/shared/services/candidateAuthService';
 import type { Candidate, CandidateRegisterRequest } from '@/shared/services/candidateAuthService';
 import { useToast } from '@/shared/hooks/use-toast';
 
+const PENDING_VERIFICATION_KEY = 'candidatePendingVerification';
+
 interface CandidateAuthContextType {
   candidate: Candidate | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  login: (
+    email: string,
+    password: string
+  ) => Promise<{ success: boolean; error?: string; pendingVerification?: { email: string } }>;
   register: (data: CandidateRegisterRequest) => Promise<{ success: boolean; error?: string }>;
   logout: () => Promise<void>;
   refreshCandidate: () => Promise<void>;
@@ -100,10 +105,27 @@ export function CandidateAuthProvider({ children }: { children: ReactNode }) {
   const login = async (
     email: string,
     password: string
-  ): Promise<{ success: boolean; error?: string }> => {
+  ): Promise<{ success: boolean; error?: string; pendingVerification?: { email: string } }> => {
     try {
       const response = await candidateAuthService.login({ email, password });
       if (!response.success) {
+        const pendingVerification =
+          (response.code === 'PENDING_VERIFICATION' || response.details?.code === 'PENDING_VERIFICATION')
+            ? {
+                email: (response.details?.email as string) || email,
+              }
+            : null;
+
+        if (pendingVerification) {
+          sessionStorage.setItem(PENDING_VERIFICATION_KEY, JSON.stringify(pendingVerification));
+          localStorage.setItem(PENDING_VERIFICATION_KEY, JSON.stringify(pendingVerification));
+          toast({
+            title: 'Verify your email',
+            description: 'Please check your inbox for the verification link.',
+          });
+          return { success: false, pendingVerification };
+        }
+
         const errorMessage = response.error || 'Login failed. Please check your credentials.';
         toast({
           title: 'Login failed',
@@ -178,6 +200,8 @@ export function CandidateAuthProvider({ children }: { children: ReactNode }) {
       // Ignore logout errors
     } finally {
       setCandidate(null);
+      sessionStorage.removeItem(PENDING_VERIFICATION_KEY);
+      localStorage.removeItem(PENDING_VERIFICATION_KEY);
       navigate('/login');
     }
   };
