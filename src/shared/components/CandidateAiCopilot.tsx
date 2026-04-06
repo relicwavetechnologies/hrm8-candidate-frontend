@@ -8,6 +8,7 @@
 
 import {
   type FormEvent,
+  type ReactNode,
   useMemo,
   useState,
   useEffect,
@@ -111,6 +112,111 @@ function renderText(message: ChatMessage): string {
     .join("\n");
 }
 
+/** Lightweight inline markdown → React elements (no external deps). */
+function renderMarkdown(text: string): ReactNode[] {
+  const lines = text.split("\n");
+  const elements: ReactNode[] = [];
+  let listBuffer: { ordered: boolean; items: ReactNode[] } | null = null;
+  let key = 0;
+
+  const flushList = () => {
+    if (!listBuffer) return;
+    if (listBuffer.ordered) {
+      elements.push(
+        <ol key={key++} className="my-1 list-decimal pl-5 space-y-0.5">
+          {listBuffer.items.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ol>
+      );
+    } else {
+      elements.push(
+        <ul key={key++} className="my-1 list-disc pl-5 space-y-0.5">
+          {listBuffer.items.map((item, i) => (
+            <li key={i}>{item}</li>
+          ))}
+        </ul>
+      );
+    }
+    listBuffer = null;
+  };
+
+  /** Parse inline markdown: **bold** and *italic* */
+  const parseInline = (raw: string): ReactNode => {
+    const parts: ReactNode[] = [];
+    let remaining = raw;
+    let inlineKey = 0;
+    const regex = /(\*\*(.+?)\*\*|\*(.+?)\*)/g;
+    let match: RegExpExecArray | null;
+    let lastIndex = 0;
+    // eslint-disable-next-line no-cond-assign
+    while ((match = regex.exec(remaining)) !== null) {
+      if (match.index > lastIndex) {
+        parts.push(remaining.slice(lastIndex, match.index));
+      }
+      if (match[2]) {
+        parts.push(<strong key={inlineKey++}>{match[2]}</strong>);
+      } else if (match[3]) {
+        parts.push(<em key={inlineKey++}>{match[3]}</em>);
+      }
+      lastIndex = regex.lastIndex;
+    }
+    if (lastIndex < remaining.length) {
+      parts.push(remaining.slice(lastIndex));
+    }
+    return parts.length === 1 ? parts[0] : <>{parts}</>;
+  };
+
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+
+    // Headings
+    const headingMatch = line.match(/^(#{1,4})\s+(.+)/);
+    if (headingMatch) {
+      flushList();
+      const level = headingMatch[1].length;
+      const content = parseInline(headingMatch[2]);
+      if (level === 1) elements.push(<h3 key={key++} className="text-[14px] font-bold mt-2 mb-1">{content}</h3>);
+      else if (level === 2) elements.push(<h4 key={key++} className="text-[13px] font-bold mt-2 mb-1">{content}</h4>);
+      else elements.push(<h5 key={key++} className="text-[13px] font-semibold mt-1.5 mb-0.5">{content}</h5>);
+      continue;
+    }
+
+    // Unordered list
+    const ulMatch = line.match(/^[-*]\s+(.+)/);
+    if (ulMatch) {
+      if (listBuffer && listBuffer.ordered) flushList();
+      if (!listBuffer) listBuffer = { ordered: false, items: [] };
+      listBuffer.items.push(parseInline(ulMatch[1]));
+      continue;
+    }
+
+    // Ordered list
+    const olMatch = line.match(/^\d+\.\s+(.+)/);
+    if (olMatch) {
+      if (listBuffer && !listBuffer.ordered) flushList();
+      if (!listBuffer) listBuffer = { ordered: true, items: [] };
+      listBuffer.items.push(parseInline(olMatch[1]));
+      continue;
+    }
+
+    // Flush any pending list before non-list content
+    flushList();
+
+    // Blank line
+    if (!line.trim()) {
+      elements.push(<div key={key++} className="h-1.5" />);
+      continue;
+    }
+
+    // Normal paragraph
+    elements.push(<p key={key++} className="my-0">{parseInline(line)}</p>);
+  }
+
+  flushList();
+  return elements;
+}
+
 /** Convert snake_case tool name to Title Case */
 function formatToolName(toolName: string): string {
   return toolName
@@ -191,7 +297,7 @@ function PromptCard({
   text,
   onClick,
 }: {
-  icon: React.ReactNode;
+  icon: ReactNode;
   text: string;
   onClick: () => void;
 }) {
@@ -462,7 +568,9 @@ export function CandidateAiCopilot() {
 
                         {/* Message text */}
                         {text && (
-                          <p className="whitespace-pre-wrap">{text}</p>
+                          isUser
+                            ? <p className="whitespace-pre-wrap">{text}</p>
+                            : <div className="space-y-0.5">{renderMarkdown(text)}</div>
                         )}
                       </div>
                     </div>
