@@ -127,6 +127,29 @@ interface JobRound {
   type?: string | null;
 }
 
+/** Resolve the candidate-visible round/stage label. Prefer the actual round name over the raw stage enum. */
+function getCurrentRoundLabel(app: { stage?: string; currentJobRoundId?: string | null; jobRounds?: JobRound[] }): string | null {
+  // If we have the current round id and rounds data, use the actual round name
+  if (app.currentJobRoundId && app.jobRounds && app.jobRounds.length > 0) {
+    const currentRound = app.jobRounds.find(r => r.id === app.currentJobRoundId);
+    if (currentRound) {
+      // Use candidate-facing label if set, otherwise the round name
+      const label = currentRound.candidate_facing_label || currentRound.name;
+      // For fixed rounds, use friendly names
+      if (currentRound.fixed_key === 'NEW') return 'Applied';
+      if (currentRound.fixed_key === 'OFFER') return 'Offer';
+      if (currentRound.fixed_key === 'HIRED') return 'Hired';
+      if (currentRound.fixed_key === 'REJECTED') return 'Rejected';
+      return label || null;
+    }
+  }
+  // Fallback to formatted stage
+  if (app.stage) {
+    return String(app.stage).replace(/_/g, ' ');
+  }
+  return null;
+}
+
 /* ── types ── */
 
 interface JobDetails {
@@ -872,9 +895,9 @@ export default function ApplicationsPage() {
                                   {salary}
                                 </Badge>
                               )}
-                              {app.stage && app.stage !== app.status && (
+                              {getCurrentRoundLabel(app) && getCurrentRoundLabel(app) !== app.status && (
                                 <Badge variant="secondary" className="rounded-full text-[10px] px-2.5 py-0.5">
-                                  {String(app.stage).replace(/_/g, ' ')}
+                                  {getCurrentRoundLabel(app)}
                                 </Badge>
                               )}
                               {app.tags && app.tags.length > 0 && app.tags.slice(0, 2).map((tag, i) => (
@@ -1011,10 +1034,10 @@ export default function ApplicationsPage() {
                           <Star className="h-6 w-6 text-violet-600 dark:text-violet-400 mx-auto mt-1 fill-violet-200 dark:fill-violet-900" />
                         </div>
                       )}
-                      {selectedApp.stage && (
+                      {getCurrentRoundLabel(selectedApp) && (
                         <div className="rounded-2xl border border-border/70 bg-muted/[0.24] px-4 py-3 text-center">
-                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Stage</p>
-                          <p className="text-sm font-semibold mt-1.5">{String(selectedApp.stage).replace(/_/g, ' ')}</p>
+                          <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">Current Round</p>
+                          <p className="text-sm font-semibold mt-1.5">{getCurrentRoundLabel(selectedApp)}</p>
                         </div>
                       )}
                   </div>

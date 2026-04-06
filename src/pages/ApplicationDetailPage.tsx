@@ -16,6 +16,36 @@ import { Button } from '@/shared/components/ui/button';
 import { Loader2, ArrowLeft } from 'lucide-react';
 import { format } from 'date-fns';
 
+/** Resolve the candidate-visible round label from application data. */
+function resolveRoundLabel(app: any): string | null {
+    // Try to find the current round from application_round_progress
+    const roundProgress: any[] = app.application_round_progress || app.applicationRoundProgress || [];
+    const currentRoundId = app.currentJobRoundId || app.current_job_round_id;
+
+    if (currentRoundId && roundProgress.length > 0) {
+        const match = roundProgress.find((rp: any) => {
+            const round = rp.job_round || rp.jobRound;
+            return round?.id === currentRoundId;
+        });
+        if (match) {
+            const round = match.job_round || match.jobRound;
+            if (round) {
+                if (round.fixed_key === 'NEW') return 'Applied';
+                if (round.fixed_key === 'OFFER') return 'Offer';
+                if (round.fixed_key === 'HIRED') return 'Hired';
+                if (round.fixed_key === 'REJECTED') return 'Rejected';
+                return round.candidate_facing_label || round.name || null;
+            }
+        }
+    }
+
+    // Fallback: formatted stage
+    if (app.stage) {
+        return String(app.stage).replace(/_/g, ' ');
+    }
+    return null;
+}
+
 export default function ApplicationDetailPage() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -95,11 +125,14 @@ export default function ApplicationDetailPage() {
                 >
                     <div className="flex items-center gap-2">
                         {renderStatus(application.status)}
-                        {application.stage && (
-                            <Badge variant="outline" className="h-6 px-2 text-xs rounded-full">
-                                {application.stage.replace(/_/g, ' ')}
-                            </Badge>
-                        )}
+                        {(() => {
+                            const roundLabel = resolveRoundLabel(application);
+                            return roundLabel ? (
+                                <Badge variant="outline" className="h-6 px-2 text-xs rounded-full">
+                                    {roundLabel}
+                                </Badge>
+                            ) : null;
+                        })()}
                     </div>
                     <Button
                         variant="ghost"
