@@ -5,6 +5,7 @@ import LoginPage from '@/pages/auth/LoginPage'
 import RegisterPage from '@/pages/auth/RegisterPage'
 import VerifyEmailPage from '@/pages/auth/VerifyEmailPage'
 import ForgotPasswordPage from '@/pages/auth/ForgotPasswordPage'
+import ResetPasswordPage from '@/pages/auth/ResetPasswordPage'
 import CandidateDashboardHome from '@/pages/CandidateDashboardHome'
 import JobSearchPage from '@/pages/JobSearchPage'
 import ApplicationsPage from '@/pages/ApplicationsPage'
@@ -25,6 +26,7 @@ import CareersPage from '@/pages/CareersPage'
 import OfferDetailPage from '@/pages/OfferDetailPage'
 import AssessmentPage from '@/pages/AssessmentPage'
 import JobApplicationPage from '@/pages/JobApplicationPage'
+import HelpPage from '@/pages/HelpPage'
 import { CandidateAuthGuard } from '@/shared/components/auth/CandidateAuthGuard'
 
 export function AppRoutes() {
@@ -36,6 +38,7 @@ export function AppRoutes() {
                 <Route path="/register" element={<RegisterPage />} />
                 <Route path="/verify-email" element={<VerifyEmailPage />} />
                 <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+                <Route path="/reset-password" element={<ResetPasswordPage />} />
             </Route>
 
             {/* Public Job Routes */}
@@ -64,6 +67,7 @@ export function AppRoutes() {
                 <Route path="/candidate/messages/:conversationId" element={<ConversationPage />} />
                 <Route path="/candidate/notifications" element={<NotificationsPage />} />
                 <Route path="/candidate/settings" element={<SettingsPage />} />
+                <Route path="/candidate/help" element={<HelpPage />} />
                 <Route path="/candidate/offers/:id" element={<OfferDetailPage />} />
             </Route>
 

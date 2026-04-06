@@ -1,8 +1,9 @@
 import * as React from "react";
 import { Separator } from "@/shared/components/ui/separator";
+import { Input } from "@/shared/components/ui/input";
+import { Search } from "lucide-react";
 import { CandidateUserNav } from "./CandidateUserNav";
 import { NotificationsDropdown } from "./NotificationsDropdown";
-import { GlobalSearch } from "./GlobalSearch";
 import { TooltipProvider } from "@/shared/components/ui/tooltip";
 import { Breadcrumbs } from "@/shared/components/common/Breadcrumbs";
 import { ThemeToggle } from "@/shared/components/common/ThemeToggle";
@@ -83,7 +84,16 @@ export function CandidateHeader({ breadcrumbActions, showSidebarTrigger = true, 
           )}
 
           <div className="flex-1 flex items-center gap-4">
-            {showSearch && <GlobalSearch />}
+            {showSearch && (
+              <div className="relative hidden w-full max-w-md md:block">
+                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search jobs..."
+                  className="bg-muted/50 pl-10"
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">

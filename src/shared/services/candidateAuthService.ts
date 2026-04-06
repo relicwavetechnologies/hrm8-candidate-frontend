@@ -74,6 +74,15 @@ export interface CandidateVerifyEmailResponse {
   message: string;
 }
 
+export interface CandidateResetPasswordRequest {
+  token: string;
+  password: string;
+}
+
+export interface CandidateResetPasswordResponse {
+  message: string;
+}
+
 class CandidateAuthService {
   async login(credentials: CandidateLoginRequest) {
     return apiClient.post<CandidateLoginResponse>('/api/candidate/auth/login', credentials);
@@ -93,6 +102,10 @@ class CandidateAuthService {
 
   async verifyEmail(token: string) {
     return apiClient.get<CandidateVerifyEmailResponse>(`/api/candidate/auth/verify-email?token=${token}`);
+  }
+
+  async resetPassword(data: CandidateResetPasswordRequest) {
+    return apiClient.post<CandidateResetPasswordResponse>('/api/candidate/auth/reset-password', data);
   }
 }
 

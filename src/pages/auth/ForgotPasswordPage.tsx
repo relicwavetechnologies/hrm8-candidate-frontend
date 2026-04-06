@@ -69,8 +69,8 @@ export default function ForgotPasswordPage() {
 
     if (isSuccess) {
         return (
-            <Card className="border-none shadow-none bg-transparent">
-                <CardContent className="pt-6 px-0 text-center space-y-4">
+            <Card className="border-border/70 bg-background/95 shadow-sm backdrop-blur">
+                <CardContent className="space-y-4 pt-6 text-center">
                     <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-primary/10">
                         <MailCheck className="h-8 w-8 text-primary" />
                     </div>
@@ -101,14 +101,14 @@ export default function ForgotPasswordPage() {
     }
 
     return (
-        <Card className="border-none shadow-none bg-transparent">
-            <CardHeader className="space-y-1 pb-4 px-0">
+        <Card className="border-border/70 bg-background/95 shadow-sm backdrop-blur">
+            <CardHeader className="space-y-1 pb-4">
                 <CardTitle className="text-2xl font-bold tracking-tight">Forgot password?</CardTitle>
                 <CardDescription>
                     Enter your email address and we'll send you a link to reset your password.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="px-0">
+            <CardContent>
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="email">Email</Label>
@@ -133,7 +133,7 @@ export default function ForgotPasswordPage() {
                     </Button>
                 </form>
             </CardContent>
-            <CardFooter className="px-0">
+            <CardFooter>
                 <Button variant="ghost" className="w-full" asChild>
                     <Link to="/login">
                         <ArrowLeft className="mr-2 h-4 w-4" />

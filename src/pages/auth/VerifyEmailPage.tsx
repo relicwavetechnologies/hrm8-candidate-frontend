@@ -8,7 +8,6 @@ import { candidateAuthService } from '@/shared/services/candidateAuthService';
 export default function VerifyEmailPage() {
     const [searchParams] = useSearchParams();
     const token = searchParams.get('token');
-    const email = searchParams.get('email');
     const navigate = useNavigate();
 
     const [status, setStatus] = useState<'verifying' | 'success' | 'error'>('verifying');
@@ -16,9 +15,9 @@ export default function VerifyEmailPage() {
     const hasVerified = useRef(false);
 
     useEffect(() => {
-        if (!token || !email) {
+        if (!token) {
             setStatus('error');
-            setMessage('Invalid verification link. Token or email is missing.');
+            setMessage('Invalid verification link. Token is missing.');
             return;
         }
 
@@ -45,11 +44,11 @@ export default function VerifyEmailPage() {
         };
 
         verifyEmail();
-    }, [token, email]);
+    }, [token]);
 
     return (
-        <Card className="border-none shadow-none bg-transparent">
-            <CardHeader className="space-y-1 pb-4 px-0 text-center">
+        <Card className="border-border/70 bg-background/95 shadow-sm backdrop-blur">
+            <CardHeader className="space-y-1 pb-4 text-center">
                 <CardTitle className="text-2xl font-bold tracking-tight">Email Verification</CardTitle>
                 <CardDescription>
                     {status === 'verifying' && 'Please wait while we verify your email...'}
@@ -58,7 +57,7 @@ export default function VerifyEmailPage() {
                 </CardDescription>
             </CardHeader>
 
-            <CardContent className="flex flex-col items-center justify-center p-6 space-y-6 px-0">
+            <CardContent className="flex flex-col items-center justify-center space-y-6 p-6">
                 {status === 'verifying' && (
                     <Loader2 className="h-12 w-12 text-primary animate-spin" />
                 )}

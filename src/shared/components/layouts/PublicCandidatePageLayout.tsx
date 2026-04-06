@@ -8,6 +8,8 @@ interface PublicCandidatePageLayoutProps {
   children: ReactNode;
   breadcrumbActions?: ReactNode;
   fullWidth?: boolean;
+  showSidebarTrigger?: boolean;
+  showSearch?: boolean;
 }
 
 export function PublicCandidatePageLayout({
@@ -17,10 +19,11 @@ export function PublicCandidatePageLayout({
   children,
   breadcrumbActions,
   fullWidth = true,
+  showSearch = true,
 }: PublicCandidatePageLayoutProps) {
   return (
     <div className="min-h-screen flex flex-col">
-      <PublicCandidateHeader breadcrumbActions={breadcrumbActions} />
+      <PublicCandidateHeader breadcrumbActions={breadcrumbActions} showSearch={showSearch} />
 
       <div className="flex-1">
         {(title || subtitle || actions) && (

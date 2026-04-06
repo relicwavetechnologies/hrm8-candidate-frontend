@@ -1,3 +1,5 @@
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -8,11 +10,10 @@ All colors MUST be HSL.
 
 @layer base {
   :root {
-    /* Brand Colors - HRM8 Primary #5B67F3 */
-    --primary: 235 87% 65%;
+    --primary: 236 79% 64%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 235 87% 60%;
-    --primary-light: 235 87% 95%;
+    --primary-hover: 236 79% 60%;
+    --primary-light: 236 79% 95%;
 
     /* Supporting Colors - Vibrant & Professional */
     --secondary: 220 13% 91%;
@@ -42,12 +43,12 @@ All colors MUST be HSL.
     --destructive-light: 0 84% 96%;
 
     /* Neutrals */
-    --background: 0 0% 100%;
+    --background: 220 20% 98%;
     --foreground: 222 47% 11%;
-    --muted: 220 14% 96%;
+    --muted: 220 18% 95%;
     --muted-foreground: 220 9% 46%;
-    --border: 220 13% 91%;
-    --input: 220 13% 91%;
+    --border: 220 13% 89%;
+    --input: 220 13% 89%;
     --ring: 235 87% 65%;
 
     /* Cards & Surfaces */
@@ -68,20 +69,20 @@ All colors MUST be HSL.
 
     /* Gradients - Modern & Vibrant */
     --gradient-primary: linear-gradient(135deg, hsl(235 87% 65%) 0%, hsl(250 60% 58%) 100%);
-    --gradient-accent: linear-gradient(135deg, hsl(235 87% 65%) 0%, hsl(210 40% 96%) 100%);
+    --gradient-accent: linear-gradient(135deg, hsl(175 60% 50%) 0%, hsl(180 70% 45%) 100%);
     --gradient-coral: linear-gradient(135deg, hsl(15 85% 62%) 0%, hsl(25 95% 53%) 100%);
     --gradient-soft: linear-gradient(180deg, hsl(0 0% 100%) 0%, hsl(235 87% 98%) 100%);
-    --gradient-hero: linear-gradient(135deg, hsl(235 87% 65%) 0%, hsl(220 14% 96%) 50%, hsl(15 85% 62%) 100%);
+    --gradient-hero: linear-gradient(135deg, hsl(235 87% 65%) 0%, hsl(175 60% 50%) 50%, hsl(15 85% 62%) 100%);
 
     /* Shadows */
-    --shadow-sm: 0 1px 2px 0 hsl(235 87% 65% / 0.05);
-    --shadow-md: 0 4px 6px -1px hsl(235 87% 65% / 0.1), 0 2px 4px -1px hsl(235 87% 65% / 0.06);
-    --shadow-lg: 0 10px 15px -3px hsl(235 87% 65% / 0.1), 0 4px 6px -2px hsl(235 87% 65% / 0.05);
-    --shadow-xl: 0 20px 25px -5px hsl(235 87% 65% / 0.15), 0 10px 10px -5px hsl(235 87% 65% / 0.04);
-    --shadow-glow: 0 0 40px hsl(235 87% 65% / 0.3);
-    --shadow-primary: 0 10px 30px hsl(235 87% 65% / 0.15);
-    --shadow-success: 0 10px 30px hsl(142 71% 45% / 0.15);
-    --shadow-warning: 0 10px 30px hsl(38 92% 50% / 0.15);
+    --shadow-sm: 0 1px 3px 0 hsl(220 20% 10% / 0.06), 0 1px 2px -1px hsl(220 20% 10% / 0.04);
+    --shadow-md: 0 4px 8px -2px hsl(220 20% 10% / 0.08), 0 2px 4px -2px hsl(220 20% 10% / 0.05);
+    --shadow-lg: 0 12px 20px -4px hsl(220 20% 10% / 0.1), 0 4px 8px -4px hsl(220 20% 10% / 0.06);
+    --shadow-xl: 0 24px 32px -6px hsl(220 20% 10% / 0.12), 0 8px 16px -6px hsl(220 20% 10% / 0.06);
+    --shadow-glow: 0 0 40px hsl(235 87% 65% / 0.25);
+    --shadow-primary: 0 8px 24px hsl(235 87% 65% / 0.18);
+    --shadow-success: 0 8px 24px hsl(142 71% 45% / 0.15);
+    --shadow-warning: 0 8px 24px hsl(38 92% 50% / 0.15);
 
     /* Glassmorphism */
     --glass-bg: hsl(0 0% 100% / 0.8);
@@ -91,10 +92,10 @@ All colors MUST be HSL.
     --primary-glow: 235 87% 75%;
 
     /* Spacing & Layout */
-    --radius: 0.75rem;
-    --radius-sm: 0.5rem;
-    --radius-lg: 1rem;
-    --radius-xl: 1.5rem;
+    --radius: 0.875rem;
+    --radius-sm: 0.625rem;
+    --radius-lg: 1.25rem;
+    --radius-xl: 1.75rem;
 
     /* Chart Colors */
     --chart-1: 142 71% 45%;
@@ -107,6 +108,10 @@ All colors MUST be HSL.
     --transition-fast: 150ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-base: 300ms cubic-bezier(0.4, 0, 0.2, 1);
     --transition-slow: 500ms cubic-bezier(0.4, 0, 0.2, 1);
+
+    /* Icon System */
+    --icon-stroke-default: 1.9;
+    --icon-stroke-emphasis: 2.2;
   }
 
   .dark {
@@ -126,10 +131,10 @@ All colors MUST be HSL.
     --popover: 0 0% 9%;
     --popover-foreground: 0 0% 95%;
 
-    --primary: 235 87% 65%;
+    --primary: 236 79% 64%;
     --primary-foreground: 0 0% 100%;
-    --primary-hover: 235 87% 70%;
-    --primary-light: 235 87% 20%;
+    --primary-hover: 236 79% 70%;
+    --primary-light: 236 79% 20%;
 
     --accent: 0 0% 15%;
     --accent-foreground: 0 0% 95%;
@@ -198,27 +203,42 @@ All colors MUST be HSL.
   }
 
   h1 {
-    @apply text-4xl md:text-5xl lg:text-6xl;
+    @apply text-2xl md:text-3xl;
   }
 
   h2 {
-    @apply text-3xl md:text-4xl lg:text-5xl;
+    @apply text-xl md:text-2xl;
   }
 
   h3 {
-    @apply text-2xl md:text-3xl lg:text-4xl;
-  }
-
-  h4 {
-    @apply text-xl md:text-2xl lg:text-3xl;
-  }
-
-  h5 {
     @apply text-lg md:text-xl;
   }
 
-  h6 {
+  h4 {
     @apply text-base md:text-lg;
+  }
+
+  h5 {
+    @apply text-sm md:text-base;
+  }
+
+  h6 {
+    @apply text-xs md:text-sm;
+  }
+
+  svg.icon-tabler,
+  svg.lucide {
+    vector-effect: non-scaling-stroke;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+  }
+
+  .icon-premium {
+    stroke-width: var(--icon-stroke-default);
+  }
+
+  .icon-premium-emphasis {
+    stroke-width: var(--icon-stroke-emphasis);
   }
 }
 

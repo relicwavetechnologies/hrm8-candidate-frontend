@@ -9,12 +9,15 @@ import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/shared/components/ui/button";
 import { useCandidateAuth } from "@/contexts/CandidateAuthContext";
+import logoDark from "@/assets/logo-dark.png";
+import logoLight from "@/assets/logo-light.png";
 
 interface PublicCandidateHeaderProps {
   breadcrumbActions?: ReactNode;
+  showSearch?: boolean;
 }
 
-export function PublicCandidateHeader({ breadcrumbActions }: PublicCandidateHeaderProps = {}) {
+export function PublicCandidateHeader({ breadcrumbActions, showSearch = true }: PublicCandidateHeaderProps = {}) {
   const { isAuthenticated } = useCandidateAuth();
 
   return (
@@ -22,20 +25,31 @@ export function PublicCandidateHeader({ breadcrumbActions }: PublicCandidateHead
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="flex h-14 items-center gap-3 px-5">
           <Link to="/jobs" className="flex items-center gap-2">
-            <span className="font-semibold">HRM8</span>
+            <img
+              src={logoDark}
+              alt="HRM8"
+              className="block h-7 dark:hidden"
+            />
+            <img
+              src={logoLight}
+              alt="HRM8"
+              className="hidden h-7 dark:block"
+            />
           </Link>
           <Separator orientation="vertical" className="h-6" />
 
           <div className="flex-1 flex items-center gap-4">
-            <div className="relative max-w-md w-full hidden md:block">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                type="search"
-                placeholder="Search jobs..."
-                className="pl-10 bg-muted/50"
-                readOnly
-              />
-            </div>
+            {showSearch && (
+              <div className="relative max-w-md w-full hidden md:block">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  type="search"
+                  placeholder="Search jobs..."
+                  className="pl-10 bg-muted/50"
+                  readOnly
+                />
+              </div>
+            )}
           </div>
 
           <div className="flex items-center gap-2">
