@@ -365,9 +365,13 @@ export default function ApplicationsPage() {
         // Extract scheduling sessions for this application
         let schedulingSessions: SchedulingSessionData[] = [];
         if (schedulingRes.status === 'fulfilled' && schedulingRes.value.success && schedulingRes.value.data) {
-          const data = schedulingRes.value.data as any;
-          const allSessions: SchedulingSessionData[] = data.sessions || data.data?.sessions || [];
-          schedulingSessions = allSessions.filter(s => s.applicationId === app.id);
+          const raw = schedulingRes.value.data as any;
+          // Handle multiple possible response shapes
+          const allSessions: SchedulingSessionData[] = raw.sessions || raw.data?.sessions || raw.data?.data?.sessions || [];
+          schedulingSessions = Array.isArray(allSessions) ? allSessions.filter(s => s.applicationId === app.id) : [];
+          console.log('[scheduling-sessions] raw:', raw, 'filtered:', schedulingSessions);
+        } else {
+          console.log('[scheduling-sessions] fetch failed or empty:', schedulingRes);
         }
 
         if (response.status === 'fulfilled' && response.value.data?.application) {
@@ -909,7 +913,7 @@ export default function ApplicationsPage() {
 
       {/* ── Application Detail Drawer (wide) ── */}
       <Sheet open={drawerOpen} onOpenChange={setDrawerOpen}>
-        <SheetContent className="w-full sm:max-w-3xl overflow-y-auto p-0">
+        <SheetContent className="w-full sm:max-w-4xl overflow-y-auto p-0">
           {selectedApp && (
             <div className="flex flex-col h-full">
               {/* Drawer header */}
