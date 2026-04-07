@@ -192,7 +192,7 @@ export default function ProfilePage() {
 
   return (
     <CandidatePageLayout>
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4">
         <AtsPageHeader
           title="My Profile"
           subtitle="Manage your candidate profile and preferences"
@@ -202,7 +202,7 @@ export default function ProfilePage() {
           {/* Personal Information */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <User className="h-5 w-5" />
                 Personal Information
               </CardTitle>
@@ -329,7 +329,7 @@ export default function ProfilePage() {
           {/* LinkedIn Profile */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Globe className="h-5 w-5" />
                 LinkedIn Profile
               </CardTitle>
@@ -352,7 +352,7 @@ export default function ProfilePage() {
           {/* Work Eligibility & Visa Status */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Briefcase className="h-5 w-5" />
                 Work Eligibility & Visa Status
               </CardTitle>
@@ -408,7 +408,7 @@ export default function ProfilePage() {
           {/* Job Preferences */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <MapPin className="h-5 w-5" />
                 Job Preferences
               </CardTitle>
@@ -554,7 +554,7 @@ export default function ProfilePage() {
           {/* Privacy & Visibility Settings */}
           <Card>
             <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Shield className="h-5 w-5" />
                 Privacy & Visibility Settings
               </CardTitle>

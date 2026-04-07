@@ -716,7 +716,7 @@ export default function ApplicationsPage() {
 
   return (
     <CandidatePageLayout>
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4">
         <AtsPageHeader
           title="My Applications"
           subtitle="Track your job applications, interviews, and assessments"
@@ -996,14 +996,14 @@ export default function ApplicationsPage() {
               </SheetHeader>
 
               {loadingDetail ? (
-                <div className="p-6 space-y-4">
+                <div className="p-4 space-y-3">
                   <Skeleton className="h-20 w-full rounded-2xl" />
                   <Skeleton className="h-32 w-full rounded-2xl" />
                   <Skeleton className="h-24 w-full rounded-2xl" />
                   <Skeleton className="h-24 w-full rounded-2xl" />
                 </div>
               ) : (
-                <div className="p-6 space-y-6 flex-1">
+                <div className="p-4 space-y-4 flex-1">
 
                   {/* ── Scoring & Status metrics ── */}
                   <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
@@ -1545,6 +1545,18 @@ export default function ApplicationsPage() {
                                       {assessment.result.details.strengths.map((s, i) => <li key={i}>{s}</li>)}
                                     </ul>
                                   </div>
+                                )}
+
+                                {/* CTA to start/resume assessment */}
+                                {['INVITED', 'PENDING', 'IN_PROGRESS'].includes(assessment.status?.toUpperCase()) && (
+                                  <Button
+                                    size="sm"
+                                    className="w-full"
+                                    onClick={() => navigate(`/candidate/assessments/${assessment.id}`)}
+                                  >
+                                    <Play className="mr-2 h-4 w-4" />
+                                    {assessment.status?.toUpperCase() === 'IN_PROGRESS' ? 'Resume Assessment' : 'Start Assessment'}
+                                  </Button>
                                 )}
                               </div>
                             );

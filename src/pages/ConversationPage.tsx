@@ -117,7 +117,7 @@ export default function CandidateConversationPage() {
 
   return (
     <CandidatePageLayout>
-      <div className="p-6 space-y-6 h-full bg-gradient-to-b from-background via-background to-muted/40">
+      <div className="p-4 md:p-6 space-y-4 h-full bg-gradient-to-b from-background via-background to-muted/40">
         <AtsPageHeader
           title="Messages"
           subtitle="Conversation"

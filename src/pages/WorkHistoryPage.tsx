@@ -327,7 +327,7 @@ export default function WorkHistoryPage() {
 
     return (
         <CandidatePageLayout>
-            <div className="p-6 space-y-6">
+            <div className="p-4 md:p-6 space-y-4">
                 <AtsPageHeader
                     title="Work History & Skills"
                     subtitle="Manage your professional experience and competencies"
@@ -439,7 +439,7 @@ export default function WorkHistoryPage() {
                                     <CardHeader className="pb-2">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <CardTitle className="text-base font-semibold">{exp.role}</CardTitle>
+                                                <CardTitle className="text-sm font-bold">{exp.role}</CardTitle>
                                                 <CardDescription className="text-base font-medium text-foreground">
                                                     {exp.company}
                                                 </CardDescription>
@@ -485,7 +485,7 @@ export default function WorkHistoryPage() {
                 {/* Skills Section */}
                 < Card >
                     <CardHeader>
-                        <CardTitle className="text-base font-semibold">Skills & Competencies</CardTitle>
+                        <CardTitle className="text-sm font-bold">Skills & Competencies</CardTitle>
                         <CardDescription>Add skills to highlight your expertise</CardDescription>
                     </CardHeader>
                     <CardContent className="space-y-4">

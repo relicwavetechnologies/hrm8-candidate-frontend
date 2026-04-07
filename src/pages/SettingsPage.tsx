@@ -15,7 +15,7 @@ export function SettingsPage() {
         <CandidatePageLayout>
             <div className="container mx-auto p-6 max-w-4xl space-y-8">
                 <div>
-                    <h1 className="text-3xl font-bold tracking-tight">Account Settings</h1>
+                    <h1 className="text-lg font-bold tracking-tight">Account Settings</h1>
                     <p className="text-muted-foreground mt-2">
                         Manage your account security, privacy preferences, and notifications.
                     </p>

@@ -849,7 +849,7 @@ export default function CareersPage() {
                 <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
                   <div>
                     <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Employer directory</p>
-                    <h2 className="mt-1 text-2xl font-semibold tracking-tight text-slate-950">
+                    <h2 className="mt-1 text-lg font-bold tracking-tight text-slate-950">
                       {formatCount(filteredCompanies.length)} company profile{filteredCompanies.length === 1 ? '' : 's'} in view
                     </h2>
                     <p className="mt-1 text-sm text-slate-600">
@@ -911,7 +911,7 @@ export default function CareersPage() {
                   ))}
                 </div>
               ) : filteredCompanies.length === 0 ? (
-                <div className="rounded-[30px] border border-dashed border-slate-300 bg-white p-12 text-center shadow-[0_16px_45px_rgba(15,23,42,0.03)]">
+                <div className="rounded-[30px] border border-dashed border-slate-300 bg-white p-8 text-center shadow-[0_16px_45px_rgba(15,23,42,0.03)]">
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-slate-50">
                     <Users className="h-6 w-6 text-slate-400" />
                   </div>

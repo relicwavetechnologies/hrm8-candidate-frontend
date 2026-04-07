@@ -328,7 +328,7 @@ export default function SavedJobsPage() {
 
   return (
     <CandidatePageLayout>
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4">
         <AtsPageHeader
           title="Saved Items"
           subtitle="Manage your saved jobs, searches, and alerts"
@@ -537,7 +537,7 @@ export default function SavedJobsPage() {
               </div>
             ) : filteredSavedJobs.length === 0 ? (
               <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
+                <CardContent className="py-8 text-center text-muted-foreground">
                   <Bookmark className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="text-lg font-medium mb-2">
                     {hasActiveFilters ? 'No jobs match your filters' : 'No saved jobs yet'}
@@ -625,7 +625,7 @@ export default function SavedJobsPage() {
               <Skeleton className="h-40 w-full" />
             ) : savedSearches.length === 0 ? (
               <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
+                <CardContent className="py-8 text-center text-muted-foreground">
                   <Search className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="text-base font-semibold mb-2">No search history</p>
                   <p className="text-sm mb-6">Your recent searches will appear here.</p>
@@ -931,7 +931,7 @@ export default function SavedJobsPage() {
               <Skeleton className="h-40 w-full" />
             ) : jobAlerts.length === 0 ? (
               <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
+                <CardContent className="py-8 text-center text-muted-foreground">
                   <Bell className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="text-base font-semibold mb-2">No job alerts</p>
                   <p className="text-sm mb-6">Create alerts to get notified about new opportunities.</p>

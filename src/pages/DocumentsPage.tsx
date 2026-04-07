@@ -409,7 +409,7 @@ export default function DocumentsPage() {
 
   return (
     <CandidatePageLayout>
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4">
         <AtsPageHeader
           title="Documents"
           subtitle="Manage your resumes, cover letters, and portfolio"
@@ -714,7 +714,7 @@ export default function DocumentsPage() {
               </div>
             ) : resumes.length === 0 ? (
               <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
+                <CardContent className="py-8 text-center text-muted-foreground">
                   <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="text-base font-semibold mb-2">No resumes uploaded</p>
                   <p className="text-sm mb-6">Upload your first resume to get started.</p>
@@ -832,7 +832,7 @@ export default function DocumentsPage() {
               </div>
             ) : coverLetters.length === 0 ? (
               <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
+                <CardContent className="py-8 text-center text-muted-foreground">
                   <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="text-base font-semibold mb-2">No cover letters</p>
                   <p className="text-sm mb-6">Create your first cover letter or template.</p>
@@ -960,7 +960,7 @@ export default function DocumentsPage() {
               </div>
             ) : portfolioItems.length === 0 ? (
               <Card>
-                <CardContent className="py-12 text-center text-muted-foreground">
+                <CardContent className="py-8 text-center text-muted-foreground">
                   <LinkIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
                   <p className="text-base font-semibold mb-2">No portfolio items</p>
                   <p className="text-sm mb-6">Add files or links to showcase your work.</p>

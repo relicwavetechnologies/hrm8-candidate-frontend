@@ -1,6 +1,4 @@
 import { Separator } from "@/shared/components/ui/separator";
-import { Input } from "@/shared/components/ui/input";
-import { Search } from "lucide-react";
 import { CandidateUserNav } from "./CandidateUserNav";
 import { TooltipProvider } from "@/shared/components/ui/tooltip";
 import { Breadcrumbs } from "@/shared/components/common/Breadcrumbs";
@@ -17,51 +15,33 @@ interface PublicCandidateHeaderProps {
   showSearch?: boolean;
 }
 
-export function PublicCandidateHeader({ breadcrumbActions, showSearch = true }: PublicCandidateHeaderProps = {}) {
+export function PublicCandidateHeader({ breadcrumbActions }: PublicCandidateHeaderProps = {}) {
   const { isAuthenticated } = useCandidateAuth();
 
   return (
     <TooltipProvider>
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-14 items-center gap-3 px-5">
+        <div className="flex h-12 items-center gap-3 px-4">
           <Link to="/jobs" className="flex items-center gap-2">
-            <img
-              src={logoDark}
-              alt="HRM8"
-              className="block h-7 dark:hidden"
-            />
-            <img
-              src={logoLight}
-              alt="HRM8"
-              className="hidden h-7 dark:block"
-            />
+            <img src={logoDark} alt="HRM8" className="block h-7 dark:hidden" />
+            <img src={logoLight} alt="HRM8" className="hidden h-7 dark:block" />
           </Link>
-          <Separator orientation="vertical" className="h-6" />
+          <Separator orientation="vertical" className="h-5" />
 
-          <div className="flex-1 flex items-center gap-4">
-            {showSearch && (
-              <div className="relative max-w-md w-full hidden md:block">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search jobs..."
-                  className="pl-10 bg-muted/50"
-                  readOnly
-                />
-              </div>
-            )}
+          <div className="flex-1">
+            <Breadcrumbs />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <ThemeToggle />
             {isAuthenticated ? (
               <CandidateUserNav />
             ) : (
-              <div className="flex items-center gap-2">
-                <Button variant="ghost" size="sm" asChild>
+              <div className="flex items-center gap-1.5">
+                <Button variant="ghost" size="sm" className="h-8 text-xs" asChild>
                   <Link to="/login">Sign In</Link>
                 </Button>
-                <Button size="sm" asChild>
+                <Button size="sm" className="h-8 text-xs" asChild>
                   <Link to="/register">Sign Up</Link>
                 </Button>
               </div>
@@ -69,16 +49,12 @@ export function PublicCandidateHeader({ breadcrumbActions, showSearch = true }: 
           </div>
         </div>
 
-        {/* Breadcrumbs Row */}
-        <div className="px-6 h-10 border-t bg-muted/30 flex items-center justify-between gap-4">
-          <Breadcrumbs />
-          {breadcrumbActions && (
-            <div className="flex items-center gap-2">{breadcrumbActions}</div>
-          )}
-        </div>
+        {breadcrumbActions && (
+          <div className="px-4 h-9 border-t bg-muted/30 flex items-center justify-end gap-2">
+            {breadcrumbActions}
+          </div>
+        )}
       </header>
     </TooltipProvider>
   );
 }
-
-

@@ -1,7 +1,5 @@
 import * as React from "react";
 import { Separator } from "@/shared/components/ui/separator";
-import { Input } from "@/shared/components/ui/input";
-import { Search } from "lucide-react";
 import { CandidateUserNav } from "./CandidateUserNav";
 import { NotificationsDropdown } from "./NotificationsDropdown";
 import { TooltipProvider } from "@/shared/components/ui/tooltip";
@@ -30,9 +28,8 @@ class SidebarTriggerErrorBoundary extends React.Component<
   }
 
   componentDidCatch(error: Error) {
-    // Silently handle the error - we're not in a SidebarProvider
     if (error.message.includes("useSidebar must be used within a SidebarProvider")) {
-      // This is expected, do nothing
+      // Expected, do nothing
     }
   }
 
@@ -40,29 +37,22 @@ class SidebarTriggerErrorBoundary extends React.Component<
     if (this.state.hasError) {
       return null;
     }
-
     return this.props.children;
   }
 }
 
-// Safe wrapper for SidebarTrigger that handles missing provider gracefully
 function SafeSidebarTrigger() {
   const [SidebarTriggerComponent, setSidebarTriggerComponent] = React.useState<React.ComponentType | null>(null);
 
   React.useEffect(() => {
-    // Dynamically import SidebarTrigger
     import("@/shared/components/ui/sidebar")
       .then((module) => {
         setSidebarTriggerComponent(() => module.SidebarTrigger);
       })
-      .catch(() => {
-        // Failed to import, component will not render
-      });
+      .catch(() => {});
   }, []);
 
-  if (!SidebarTriggerComponent) {
-    return null;
-  }
+  if (!SidebarTriggerComponent) return null;
 
   return (
     <SidebarTriggerErrorBoundary>
@@ -71,79 +61,35 @@ function SafeSidebarTrigger() {
   );
 }
 
-export function CandidateHeader({ breadcrumbActions, showSidebarTrigger = true, showSearch = true }: CandidateHeaderProps = {}) {
+export function CandidateHeader({ breadcrumbActions, showSidebarTrigger = true }: CandidateHeaderProps = {}) {
   return (
     <TooltipProvider>
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="flex h-14 items-center gap-3 px-5">
+        <div className="flex h-12 items-center gap-3 px-4">
           {showSidebarTrigger && (
             <>
               <SafeSidebarTrigger />
-              <Separator orientation="vertical" className="h-6" />
+              <Separator orientation="vertical" className="h-5" />
             </>
           )}
 
-          <div className="flex-1 flex items-center gap-4">
-            {showSearch && (
-              <div className="relative hidden w-full max-w-md md:block">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  type="search"
-                  placeholder="Search jobs..."
-                  className="bg-muted/50 pl-10"
-                />
-              </div>
-            )}
+          <div className="flex-1">
+            <Breadcrumbs />
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <ThemeToggle />
             <NotificationsDropdown />
             <CandidateUserNav />
           </div>
         </div>
 
-        {/* Breadcrumbs Row */}
-        <div className="px-6 h-10 border-t bg-muted/30 flex items-center justify-between gap-4">
-          <Breadcrumbs />
-          {breadcrumbActions && (
-            <div className="flex items-center gap-2">{breadcrumbActions}</div>
-          )}
-        </div>
+        {breadcrumbActions && (
+          <div className="px-4 h-9 border-t bg-muted/30 flex items-center justify-end gap-2">
+            {breadcrumbActions}
+          </div>
+        )}
       </header>
     </TooltipProvider>
   );
 }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-

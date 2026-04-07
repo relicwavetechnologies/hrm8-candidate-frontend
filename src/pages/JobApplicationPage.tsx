@@ -436,7 +436,7 @@ export default function JobApplicationPage() {
 
                 <div className="grid gap-6">
                     <div className="space-y-1">
-                        <h1 className="text-2xl font-bold">Apply for {job.title}</h1>
+                        <h1 className="text-lg font-bold">Apply for {job.title}</h1>
                         <div className="flex items-center gap-4 text-muted-foreground">
                             <span className="flex items-center gap-1"><Building2 className="h-4 w-4" /> {job.company?.name ?? 'Unknown Company'}</span>
                             <span className="flex items-center gap-1"><MapPin className="h-4 w-4" /> {job.location}</span>

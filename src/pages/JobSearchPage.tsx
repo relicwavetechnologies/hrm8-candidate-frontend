@@ -464,7 +464,7 @@ export default function JobSearchPage() {
           <div className="container mx-auto px-4 py-6">
             <div className="flex flex-col md:flex-row md:items-start md:justify-between gap-4 mb-6">
               <div>
-                <h1 className="text-3xl font-bold">Find Your Next Job</h1>
+                <h1 className="text-lg font-bold">Find Your Next Job</h1>
                 <p className="text-muted-foreground mt-1">
                   {totalJobs > 0 ? `${totalJobs} opportunities available` : 'Search for your dream job'}
                 </p>

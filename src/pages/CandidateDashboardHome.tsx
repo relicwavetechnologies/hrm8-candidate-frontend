@@ -248,34 +248,34 @@ export default function CandidateDashboardHome() {
 
   return (
     <CandidatePageLayout>
-      <div className="p-6 space-y-6">
+      <div className="p-4 md:p-6 space-y-4">
         <AtsPageHeader
           title="Dashboard"
           subtitle={`Welcome back, ${candidate?.firstName}!`}
         />
 
         {/* Dashboard Cards */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
           {/* Profile Completeness */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold">Profile Completeness</CardTitle>
-              <CardDescription className="text-sm">
+          <Card className="border-border/40 shadow-sm">
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-sm font-bold">Profile Completeness</CardTitle>
+              <CardDescription className="text-xs">
                 Complete your profile to improve your job matches
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 pb-4 pt-0">
               <div className="space-y-2">
-                <div className="flex items-center justify-between text-sm">
-                  <span>{profileCompleteness}% Complete</span>
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-medium">{profileCompleteness}% Complete</span>
                   <span className="text-muted-foreground">{100 - profileCompleteness}% remaining</span>
                 </div>
-                <Progress value={profileCompleteness} />
+                <Progress value={profileCompleteness} className="h-2" />
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => navigate('/candidate/profile')}
-                  className="mt-4 w-full"
+                  className="mt-2 w-full h-8 text-xs"
                 >
                   Complete Profile
                 </Button>
@@ -284,26 +284,26 @@ export default function CandidateDashboardHome() {
           </Card>
 
           {/* Browse Jobs */}
-          <Card className="cursor-pointer" onClick={() => navigate('/jobs')}>
-            <CardHeader>
-              <CardTitle className="text-base font-semibold flex items-center gap-2">
-                <Briefcase className="h-5 w-5" />
+          <Card className="cursor-pointer border-border/40 shadow-sm" onClick={() => navigate('/jobs')}>
+            <CardHeader className="py-3 px-4">
+              <CardTitle className="text-sm font-bold flex items-center gap-2">
+                <Briefcase className="h-4 w-4" />
                 Browse Jobs
               </CardTitle>
-              <CardDescription className="text-sm">
+              <CardDescription className="text-xs">
                 Search and apply for new opportunities
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-4 pb-4 pt-0">
               <Button
                 size="sm"
-                className="w-full"
+                className="w-full h-8 text-xs"
                 onClick={(e) => {
                   e.stopPropagation();
                   navigate('/jobs');
                 }}
               >
-                <Briefcase className="h-4 w-4 mr-2" />
+                <Briefcase className="h-3.5 w-3.5 mr-1.5" />
                 Browse Jobs
               </Button>
             </CardContent>
@@ -313,11 +313,11 @@ export default function CandidateDashboardHome() {
         {/* Scheduling Actions Required */}
         {!loadingSessions && schedulingSessions.length > 0 && (
           <Card className="overflow-hidden border-2 border-primary/30 shadow-sm">
-            <CardHeader className="py-4 px-6 border-b bg-primary/[0.03]">
+            <CardHeader className="py-3 px-4 border-b bg-primary/[0.03]">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-[10px] uppercase tracking-wider font-bold text-primary/60 mb-1">Action Required</p>
-                  <CardTitle className="text-base font-bold tracking-tight text-foreground/90">Interview Scheduling</CardTitle>
+                  <p className="text-[10px] uppercase tracking-wider font-bold text-primary/60 mb-0.5">Action Required</p>
+                  <CardTitle className="text-sm font-bold tracking-tight text-foreground/90">Interview Scheduling</CardTitle>
                 </div>
                 <Badge variant="outline" className="rounded-full text-[10px] px-2.5 border-primary/20 bg-primary/10 text-primary animate-pulse">
                   {schedulingSessions.length} pending
@@ -385,11 +385,11 @@ export default function CandidateDashboardHome() {
 
         {/* Upcoming Interviews */}
         <Card className="overflow-hidden border-border/40 shadow-sm">
-          <CardHeader className="py-4 px-6 border-b bg-muted/5">
+          <CardHeader className="py-3 px-4 border-b bg-muted/5">
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/60 mb-1">This Week</p>
-                <CardTitle className="text-base font-bold tracking-tight text-foreground/90">Upcoming Interviews</CardTitle>
+                <p className="text-[10px] uppercase tracking-wider font-bold text-muted-foreground/60 mb-0.5">This Week</p>
+                <CardTitle className="text-sm font-bold tracking-tight text-foreground/90">Upcoming Interviews</CardTitle>
               </div>
               <Calendar className="h-4 w-4 text-muted-foreground/40" />
             </div>
@@ -456,21 +456,21 @@ export default function CandidateDashboardHome() {
         </Card>
 
         {/* Recommended Jobs & Notifications */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
           {/* Recommended Jobs */}
-          <div className="h-[450px]">
+          <div className="h-[400px]">
             <Card className="h-full flex flex-col overflow-hidden border-border/40 shadow-sm">
-              <CardHeader className="py-4 px-6 border-b bg-muted/5 flex-shrink-0">
+              <CardHeader className="py-3 px-4 border-b bg-muted/5 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-base font-bold tracking-tight text-foreground/90">Recommended Jobs</CardTitle>
-                    <CardDescription className="text-xs font-medium">Matching your profile</CardDescription>
+                    <CardTitle className="text-sm font-bold tracking-tight text-foreground/90">Recommended Jobs</CardTitle>
+                    <CardDescription className="text-[11px] font-medium">Matching your profile</CardDescription>
                   </div>
                 </div>
               </CardHeader>
               <CardContent className="p-0 flex-1 overflow-hidden bg-background">
-                <ScrollArea className="h-[340px] w-full">
-                  <div className="p-4 space-y-2">
+                <ScrollArea className="h-[300px] w-full">
+                  <div className="p-3 space-y-1">
                     {loadingJobs ? (
                       <div className="flex flex-col items-center justify-center py-10 text-muted-foreground animate-pulse">
                         <div className="w-12 h-12 rounded-full bg-muted mb-4"></div>
@@ -485,12 +485,12 @@ export default function CandidateDashboardHome() {
                       recommendedJobs.map((job) => (
                         <div
                           key={job.id}
-                          className="group flex items-center gap-4 p-4 rounded-xl hover:bg-muted/30 transition-all duration-200 cursor-pointer"
+                          className="group flex items-center gap-3 p-3 rounded-lg hover:bg-muted/30 transition-all duration-200 cursor-pointer"
                           onClick={() => navigate(`/jobs/${job.id}`)}
                         >
-                          <div className="w-12 h-12 rounded-xl bg-primary/5 border border-border/10 flex items-center justify-center shrink-0">
+                          <div className="w-10 h-10 rounded-lg bg-primary/5 border border-border/10 flex items-center justify-center shrink-0">
                             {job.company?.logo ? (
-                              <img src={job.company.logo} alt={job.company.name} className="w-full h-full object-cover rounded-xl" />
+                              <img src={job.company.logo} alt={job.company.name} className="w-full h-full object-cover rounded-lg" />
                             ) : (
                               <Briefcase className="h-5 w-5 text-primary/60" />
                             )}
@@ -524,19 +524,19 @@ export default function CandidateDashboardHome() {
           </div>
 
           {/* Notifications Preview */}
-          <div className="h-[450px]">
+          <div className="h-[400px]">
             <Card className="h-full flex flex-col overflow-hidden border-border/40 shadow-sm">
-              <CardHeader className="py-4 px-6 border-b bg-muted/5 flex-shrink-0">
+              <CardHeader className="py-3 px-4 border-b bg-muted/5 flex-shrink-0">
                 <div className="flex items-center justify-between">
                   <div>
-                    <CardTitle className="text-base font-bold tracking-tight text-foreground/90">Notifications</CardTitle>
-                    <CardDescription className="text-xs font-medium">Recent updates</CardDescription>
+                    <CardTitle className="text-sm font-bold tracking-tight text-foreground/90">Notifications</CardTitle>
+                    <CardDescription className="text-[11px] font-medium">Recent updates</CardDescription>
                   </div>
                   <Bell className="h-4 w-4 text-muted-foreground/40" />
                 </div>
               </CardHeader>
               <CardContent className="p-0 flex-1 overflow-hidden bg-background">
-                <ScrollArea className="h-[340px] w-full">
+                <ScrollArea className="h-[300px] w-full">
                   <div className="divide-y divide-border/10">
                     {notifications.length === 0 ? (
                       <div className="flex flex-col items-center justify-center py-10 text-muted-foreground">
@@ -547,7 +547,7 @@ export default function CandidateDashboardHome() {
                       notifications.map((notification) => (
                         <div
                           key={notification.id}
-                          className="flex flex-col gap-1 p-4 hover:bg-muted/30 transition-all duration-200 cursor-pointer"
+                          className="flex flex-col gap-1 p-3 hover:bg-muted/30 transition-all duration-200 cursor-pointer"
                           onClick={() => void handleNotificationClick(notification)}
                         >
                           <div className="flex items-start justify-between gap-2">
@@ -586,26 +586,25 @@ export default function CandidateDashboardHome() {
           </div>
         </div>
 
-        <div className="pt-4"> {/* Footer Spacer */} </div>
-
         {/* Recent Applications */}
-        <Card>
-          <CardHeader>
+        <Card className="border-border/40 shadow-sm">
+          <CardHeader className="py-3 px-4">
             <div className="flex items-center justify-between">
               <div>
-                <CardTitle className="text-base font-semibold">Recent Applications</CardTitle>
-                <CardDescription className="text-sm">Your latest job applications</CardDescription>
+                <CardTitle className="text-sm font-bold">Recent Applications</CardTitle>
+                <CardDescription className="text-[11px]">Your latest job applications</CardDescription>
               </div>
               <Button
                 variant="outline"
                 size="sm"
+                className="h-7 text-xs"
                 onClick={() => navigate('/candidate/applications')}
               >
                 View All
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-4 pb-4 pt-0">
             {recentApplications.length === 0 ? (
               <div className="text-center py-8 text-muted-foreground">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
@@ -620,11 +619,11 @@ export default function CandidateDashboardHome() {
                 </Button>
               </div>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-2">
                 {recentApplications.map((app: any) => (
                   <div
                     key={app.id}
-                    className="flex items-center justify-between p-4 border rounded-lg cursor-pointer hover:bg-muted/30 transition-colors"
+                    className="flex items-center justify-between p-3 border border-border/40 rounded-lg cursor-pointer hover:bg-muted/30 transition-colors"
                     onClick={() => navigate(`/candidate/applications?expand=${app.id}`)}
                   >
                     <div className="flex-1">

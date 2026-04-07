@@ -175,7 +175,7 @@ export default function ApplicationTrackingPage() {
     if (isLoading) {
         return (
             <CandidatePageLayout>
-                <div className="p-6 space-y-6">
+                <div className="p-4 md:p-6 space-y-4">
                     <Skeleton className="h-12 w-1/3" />
                     <Skeleton className="h-64 w-full" />
                 </div>
@@ -200,7 +200,7 @@ export default function ApplicationTrackingPage() {
 
     return (
         <CandidatePageLayout>
-            <div className="p-6 space-y-6 max-w-5xl mx-auto">
+            <div className="p-4 md:p-6 space-y-4 max-w-5xl mx-auto">
                 <Button variant="ghost" size="sm" onClick={() => navigate('/candidate/applications')} className="mb-2 pl-0 hover:bg-transparent">
                     <ArrowLeft className="h-4 w-4 mr-2" />
                     Back to Applications
@@ -209,7 +209,7 @@ export default function ApplicationTrackingPage() {
                 {/* Header */}
                 <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
                     <div>
-                        <h1 className="text-2xl font-bold tracking-tight">{job?.title || 'Job Application'}</h1>
+                        <h1 className="text-lg font-bold tracking-tight">{job?.title || 'Job Application'}</h1>
                         <div className="flex items-center gap-2 text-muted-foreground mt-1">
                             {job?.company?.name && (
                                 <span className="flex items-center gap-1">

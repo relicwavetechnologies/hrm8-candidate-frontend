@@ -253,7 +253,7 @@ export default function QualificationsPage() {
 
     return (
         <CandidatePageLayout>
-            <div className="p-6 space-y-6">
+            <div className="p-4 md:p-6 space-y-4">
                 <AtsPageHeader
                     title="Qualifications"
                     subtitle="Manage your education, certifications, and training"
@@ -262,7 +262,7 @@ export default function QualificationsPage() {
                 {expiringCerts.length > 0 && (
                     <Card className="border-warning bg-warning/5">
                         <CardHeader>
-                            <CardTitle className="text-base font-semibold flex items-center gap-2 text-warning">
+                            <CardTitle className="text-sm font-bold flex items-center gap-2 text-warning">
                                 <AlertCircle className="h-5 w-5" />
                                 Certifications Expiring Soon
                             </CardTitle>
@@ -326,7 +326,7 @@ export default function QualificationsPage() {
                                     <CardHeader className="pb-2">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <CardTitle className="text-base font-semibold">{edu.degree} in {edu.field}</CardTitle>
+                                                <CardTitle className="text-sm font-bold">{edu.degree} in {edu.field}</CardTitle>
                                                 <CardDescription className="text-base font-medium text-foreground">
                                                     {edu.institution}
                                                 </CardDescription>
@@ -411,7 +411,7 @@ export default function QualificationsPage() {
                                     <CardHeader className="pb-2">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <CardTitle className="text-base font-semibold">{cert.name}</CardTitle>
+                                                <CardTitle className="text-sm font-bold">{cert.name}</CardTitle>
                                                 <CardDescription className="text-base font-medium text-foreground">
                                                     {cert.issuingOrg}
                                                 </CardDescription>
@@ -508,7 +508,7 @@ export default function QualificationsPage() {
                                     <CardHeader className="pb-2">
                                         <div className="flex justify-between items-start">
                                             <div>
-                                                <CardTitle className="text-base font-semibold">{train.courseName}</CardTitle>
+                                                <CardTitle className="text-sm font-bold">{train.courseName}</CardTitle>
                                                 <CardDescription className="text-base font-medium text-foreground">
                                                     {train.provider}
                                                 </CardDescription>

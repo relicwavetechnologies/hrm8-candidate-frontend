@@ -636,7 +636,7 @@ export default function CompanyDetailPage() {
       <Layout showSidebarTrigger={false}>
         <div className="mx-auto max-w-2xl px-4 py-16 text-center">
           <Building2 className="mx-auto mb-4 h-14 w-14 text-muted-foreground/50" />
-          <h1 className="mb-2 text-2xl font-semibold">Company page unavailable</h1>
+          <h1 className="mb-2 text-lg font-bold">Company page unavailable</h1>
           <p className="mb-6 text-muted-foreground">{error}</p>
           <Button asChild>
             <Link to="/careers">
@@ -1097,7 +1097,7 @@ export default function CompanyDetailPage() {
                             <div className="space-y-4">
                               <div className="space-y-3">
                                 <div className="flex flex-wrap items-center gap-2">
-                                  <h3 className="text-2xl font-semibold tracking-tight text-slate-950">{job.title}</h3>
+                                  <h3 className="text-lg font-bold tracking-tight text-slate-950">{job.title}</h3>
                                   {job.featured ? (
                                     <Badge variant="purple-soft" className="px-2.5 py-1 text-[10px] font-semibold">
                                       Featured

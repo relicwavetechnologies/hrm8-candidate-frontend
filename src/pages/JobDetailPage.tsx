@@ -236,7 +236,7 @@ export default function JobDetailPage() {
     return (
       <div className="p-6 flex items-center justify-center min-h-[400px]">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Job Not Found</h2>
+          <h2 className="text-lg font-bold mb-2">Job Not Found</h2>
           <p className="text-muted-foreground mb-4">The job you're looking for doesn't exist or has been removed.</p>
           <Button onClick={() => navigate('/jobs')}>Browse Jobs</Button>
         </div>

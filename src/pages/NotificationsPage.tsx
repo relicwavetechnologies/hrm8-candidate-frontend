@@ -337,7 +337,7 @@ export default function NotificationsPage() {
 
     return (
         <CandidatePageLayout>
-            <div className="p-6 space-y-6">
+            <div className="p-4 md:p-6 space-y-4">
                 <AtsPageHeader
                     title="Notifications & Alerts"
                     subtitle={unreadCount > 0
@@ -364,13 +364,13 @@ export default function NotificationsPage() {
                     <TabsContent value="all" className="space-y-4">
                         {loading ? (
                             <Card>
-                                <CardContent className="flex items-center justify-center py-12">
+                                <CardContent className="flex items-center justify-center py-8">
                                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                                 </CardContent>
                             </Card>
                         ) : filteredNotifications().length === 0 ? (
                             <Card>
-                                <CardContent className="flex flex-col items-center justify-center py-12">
+                                <CardContent className="flex flex-col items-center justify-center py-8">
                                     <Bell className="h-16 w-16 text-muted-foreground mb-4" />
                                     <h3 className="text-lg font-semibold mb-2">No notifications yet</h3>
                                     <p className="text-sm text-muted-foreground text-center max-w-sm">
@@ -412,13 +412,13 @@ export default function NotificationsPage() {
                     <TabsContent value="applications" className="space-y-4">
                         {loading ? (
                             <Card>
-                                <CardContent className="flex items-center justify-center py-12">
+                                <CardContent className="flex items-center justify-center py-8">
                                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                                 </CardContent>
                             </Card>
                         ) : filteredNotifications().length === 0 ? (
                             <Card>
-                                <CardContent className="flex flex-col items-center justify-center py-12">
+                                <CardContent className="flex flex-col items-center justify-center py-8">
                                     <Bell className="h-16 w-16 text-muted-foreground mb-4" />
                                     <h3 className="text-lg font-semibold mb-2">No application updates</h3>
                                     <p className="text-sm text-muted-foreground text-center max-w-sm">
@@ -496,7 +496,7 @@ export default function NotificationsPage() {
 
                             {filteredNotifications().length === 0 && upcomingInterviews.length === 0 ? (
                                 <Card>
-                                    <CardContent className="flex flex-col items-center justify-center py-12">
+                                    <CardContent className="flex flex-col items-center justify-center py-8">
                                         <Calendar className="h-16 w-16 text-muted-foreground mb-4" />
                                         <h3 className="text-lg font-semibold mb-2">No interview reminders</h3>
                                         <p className="text-sm text-muted-foreground text-center max-w-sm">
@@ -523,13 +523,13 @@ export default function NotificationsPage() {
                     <TabsContent value="job-alerts" className="space-y-4">
                         {loading ? (
                             <Card>
-                                <CardContent className="flex items-center justify-center py-12">
+                                <CardContent className="flex items-center justify-center py-8">
                                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                                 </CardContent>
                             </Card>
                         ) : filteredNotifications().length === 0 ? (
                             <Card>
-                                <CardContent className="flex flex-col items-center justify-center py-12">
+                                <CardContent className="flex flex-col items-center justify-center py-8">
                                     <Briefcase className="h-16 w-16 text-muted-foreground mb-4" />
                                     <h3 className="text-lg font-semibold mb-2">No job alerts</h3>
                                     <p className="text-sm text-muted-foreground text-center max-w-sm">
@@ -700,7 +700,7 @@ export default function NotificationsPage() {
                             </Card>
                         ) : (
                             <Card>
-                                <CardContent className="flex items-center justify-center py-12">
+                                <CardContent className="flex items-center justify-center py-8">
                                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                                 </CardContent>
                             </Card>
@@ -732,7 +732,7 @@ function NotificationCard({ notification, onDelete, onClick, getIcon }: Notifica
                         <div className="mt-1">{getIcon(notification.type)}</div>
                         <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
-                                <CardTitle className="text-base font-semibold">{notification.title}</CardTitle>
+                                <CardTitle className="text-sm font-bold">{notification.title}</CardTitle>
                                 {!notification.read && (
                                     <Badge variant="outline" className="h-6 px-2 text-xs rounded-full bg-primary/10 text-primary border-primary/20">
                                         New

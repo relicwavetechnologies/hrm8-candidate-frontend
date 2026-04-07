@@ -75,7 +75,7 @@ export default function AssessmentListPage() {
       <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold tracking-tight">Assessments</h1>
+            <h1 className="text-lg font-bold tracking-tight">Assessments</h1>
             <p className="text-muted-foreground">
               Complete the assigned assessments to proceed with your applications.
             </p>
@@ -83,7 +83,7 @@ export default function AssessmentListPage() {
         </div>
 
         {assessments.length === 0 ? (
-          <Card className="flex flex-col items-center justify-center p-12 text-center border-dashed">
+          <Card className="flex flex-col items-center justify-center p-8 text-center border-dashed">
             <div className="rounded-full bg-muted p-4 mb-4">
               <FileText className="h-8 w-8 text-muted-foreground" />
             </div>

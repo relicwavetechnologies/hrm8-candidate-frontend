@@ -442,7 +442,7 @@ export default function OfferDetailPage() {
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Offer for</p>
-              <h1 className="mt-1 text-3xl font-bold tracking-tight">{offer.jobTitle}</h1>
+              <h1 className="mt-1 text-xl font-bold tracking-tight">{offer.jobTitle}</h1>
               <p className="mt-1 text-sm text-muted-foreground capitalize">{offer.offerType.replace(/-/g, " ")} position</p>
             </div>
             {currentStatus && (
