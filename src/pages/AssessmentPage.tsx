@@ -16,7 +16,6 @@ import {
   FileText,
   Shield,
   Send,
-  Circle,
   CheckCircle,
   LayoutGrid,
   ArrowLeft,
