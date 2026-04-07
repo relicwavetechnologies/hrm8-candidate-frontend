@@ -127,25 +127,66 @@ interface JobRound {
   type?: string | null;
 }
 
+/** Friendly stage names for the fallback when round data isn't available */
+const STAGE_FRIENDLY_NAMES: Record<string, string> = {
+  NEW: 'Applied',
+  APPLIED: 'Applied',
+  RESUME_REVIEW: 'Resume Review',
+  SCREENING: 'Screening',
+  PHONE_SCREEN: 'Phone Screen',
+  INTERVIEW: 'Interview',
+  ASSESSMENT: 'Assessment',
+  OFFER: 'Offer',
+  HIRED: 'Hired',
+  REJECTED: 'Not Selected',
+  WITHDRAWN: 'Withdrawn',
+  ON_HOLD: 'On Hold',
+};
+
 /** Resolve the candidate-visible round/stage label. Prefer the actual round name over the raw stage enum. */
-function getCurrentRoundLabel(app: { stage?: string; currentJobRoundId?: string | null; jobRounds?: JobRound[] }): string | null {
-  // If we have the current round id and rounds data, use the actual round name
-  if (app.currentJobRoundId && app.jobRounds && app.jobRounds.length > 0) {
-    const currentRound = app.jobRounds.find(r => r.id === app.currentJobRoundId);
+function getCurrentRoundLabel(app: {
+  stage?: string;
+  currentJobRoundId?: string | null;
+  jobRounds?: JobRound[];
+  applicationRoundProgress?: any[];
+  application_round_progress?: any[];
+}): string | null {
+  const currentRoundId = app.currentJobRoundId;
+
+  // Strategy 1: Look up from jobRounds array
+  if (currentRoundId && app.jobRounds && app.jobRounds.length > 0) {
+    const currentRound = app.jobRounds.find(r => r.id === currentRoundId);
     if (currentRound) {
-      // Use candidate-facing label if set, otherwise the round name
-      const label = currentRound.candidate_facing_label || currentRound.name;
-      // For fixed rounds, use friendly names
       if (currentRound.fixed_key === 'NEW') return 'Applied';
       if (currentRound.fixed_key === 'OFFER') return 'Offer';
       if (currentRound.fixed_key === 'HIRED') return 'Hired';
-      if (currentRound.fixed_key === 'REJECTED') return 'Rejected';
-      return label || null;
+      if (currentRound.fixed_key === 'REJECTED') return 'Not Selected';
+      return currentRound.candidate_facing_label || currentRound.name || null;
     }
   }
-  // Fallback to formatted stage
+
+  // Strategy 2: Look up from application_round_progress (includes nested job_round data)
+  const roundProgress: any[] = app.application_round_progress || app.applicationRoundProgress || [];
+  if (currentRoundId && roundProgress.length > 0) {
+    const match = roundProgress.find((rp: any) => {
+      const round = rp.job_round || rp.jobRound;
+      return round?.id === currentRoundId;
+    });
+    if (match) {
+      const round = match.job_round || match.jobRound;
+      if (round) {
+        if (round.fixed_key === 'NEW') return 'Applied';
+        if (round.fixed_key === 'OFFER') return 'Offer';
+        if (round.fixed_key === 'HIRED') return 'Hired';
+        if (round.fixed_key === 'REJECTED') return 'Not Selected';
+        return round.candidate_facing_label || round.name || null;
+      }
+    }
+  }
+
+  // Fallback: use friendly stage name map, then titlecase
   if (app.stage) {
-    return String(app.stage).replace(/_/g, ' ');
+    return STAGE_FRIENDLY_NAMES[app.stage] || String(app.stage).replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
   return null;
 }
@@ -252,6 +293,8 @@ interface ApplicationWithDetails extends Application {
   screening_status?: string;
   jobRounds?: JobRound[];
   currentJobRoundId?: string | null;
+  applicationRoundProgress?: any[];
+  application_round_progress?: any[];
 }
 
 /* ── component ── */
@@ -299,7 +342,7 @@ export default function ApplicationsPage() {
         appliedDate: app.appliedDate || app.createdAt || new Date().toISOString(),
         detailsLoaded: false,
         currentJobRoundId: app.currentJobRoundId || app.current_job_round_id || null,
-        jobRounds: app.job?.job_rounds || app.job?.jobRounds || [],
+        jobRounds: app.job?.job_round || app.job?.job_rounds || app.job?.jobRounds || app.job?.jobRound || [],
         jobDetails: app.job ? {
           id: app.job.id,
           title: app.job.title,
@@ -355,7 +398,7 @@ export default function ApplicationsPage() {
           applicationService.getApplication(app.id),
           jobService.getApplicationForm(app.jobId),
           safeFetch(`/api/applications/${app.id}/interviews`),
-          safeFetch(`/api/assessments/application/${app.id}`),
+          safeFetch(`/api/candidate/assessments`),
           safeFetch(`/api/candidate/scheduling-sessions`),
         ]);
 
@@ -378,11 +421,24 @@ export default function ApplicationsPage() {
         }
 
         // Extract assessments (safe - won't trigger logout on 401)
+        // Fetches all candidate assessments, then filters by this application
         let assessments: AssessmentData[] = [];
         if (assessmentsRes.status === 'fulfilled' && assessmentsRes.value.success && assessmentsRes.value.data) {
           const data = assessmentsRes.value.data as any;
-          assessments = data.assessments || data.data?.assessments || [];
-          if (!Array.isArray(assessments)) assessments = [];
+          const allAssessments: any[] = data.assessments || data.data?.assessments || [];
+          assessments = (Array.isArray(allAssessments) ? allAssessments : [])
+            .filter((a: any) => a.application_id === app.id || a.applicationId === app.id)
+            .map((a: any) => ({
+              ...a,
+              // Normalize field names from Prisma snake_case to what the UI expects
+              assessment_type: a.assessment_type || a.assessmentType,
+              completed_date: a.completed_at || a.completed_date || a.completedDate,
+              invited_date: a.invited_at || a.invited_date || a.invitedDate,
+              expiry_date: a.expiry_date || a.expiryDate,
+              pass_threshold: a.pass_threshold || a.passThreshold,
+              overallScore: a.results?.overallScore ?? a.results?.score ?? a.overall_score ?? a.overallScore,
+              result: a.results || a.result,
+            }));
         }
 
         // Extract scheduling sessions for this application
@@ -410,7 +466,8 @@ export default function ApplicationsPage() {
             question: questionMap[ans.questionId] || ans.question || null,
           }));
           const fullJob = (fullApp as any).job;
-          const updatedJobRounds = fullJob?.job_rounds || fullJob?.jobRounds || app.jobRounds || [];
+          const updatedJobRounds = fullJob?.job_round || fullJob?.job_rounds || fullJob?.jobRounds || fullJob?.jobRound || app.jobRounds || [];
+          const roundProgress = (fullApp as any).application_round_progress || (fullApp as any).applicationRoundProgress || app.applicationRoundProgress || [];
           const updated: ApplicationWithDetails = {
             ...app,
             ...fullApp,
@@ -421,6 +478,7 @@ export default function ApplicationsPage() {
             detailsLoaded: true,
             currentJobRoundId: (fullApp as any).currentJobRoundId || (fullApp as any).current_job_round_id || app.currentJobRoundId,
             jobRounds: updatedJobRounds.length > 0 ? updatedJobRounds : app.jobRounds,
+            applicationRoundProgress: roundProgress,
             jobDetails: fullJob ? {
               ...app.jobDetails!,
               ...(fullJob)
