@@ -48,6 +48,9 @@ export function AppRoutes() {
             <Route path="/careers" element={<CareersPage />} />
             <Route path="/companies/:id" element={<CompanyDetailPage />} />
 
+            {/* Public Assessment Route (token-based, no auth required) */}
+            <Route path="/assessment/:token" element={<AssessmentPage />} />
+
             {/* Candidate Protected Routes */}
             <Route element={<CandidateAuthGuard><CandidateLayout /></CandidateAuthGuard>}>
                 <Route path="/" element={<Navigate replace to="/candidate/dashboard" />} />
