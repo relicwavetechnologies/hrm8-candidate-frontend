@@ -294,7 +294,6 @@ export default function JobSearchPage() {
 
   const toggleGroupValue = (
     value: string,
-    selected: string[],
     setSelected: React.Dispatch<React.SetStateAction<string[]>>
   ) => {
     setSelected((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]));
@@ -311,11 +310,11 @@ export default function JobSearchPage() {
 
   const quickChipClick = (chip: (typeof QUICK_CHIPS)[number]) => {
     if (chip === 'Remote') {
-      toggleGroupValue('REMOTE', selectedWorkModels, setSelectedWorkModels);
+      toggleGroupValue('REMOTE', setSelectedWorkModels);
       return;
     }
     if (chip === 'Full-time') {
-      toggleGroupValue('FULL_TIME', selectedEmploymentTypes, setSelectedEmploymentTypes);
+      toggleGroupValue('FULL_TIME', setSelectedEmploymentTypes);
       return;
     }
     setSearchInput(chip);
@@ -447,7 +446,7 @@ export default function JobSearchPage() {
                       key={option.value}
                       className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
                       onClick={() => {
-                        toggleGroupValue(option.value, selectedWorkModels, setSelectedWorkModels);
+                        toggleGroupValue(option.value, setSelectedWorkModels);
                         setCurrentPage(1);
                       }}
                     >
@@ -479,7 +478,7 @@ export default function JobSearchPage() {
                       key={option.value}
                       className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
                       onClick={() => {
-                        toggleGroupValue(option.value, selectedEmploymentTypes, setSelectedEmploymentTypes);
+                        toggleGroupValue(option.value, setSelectedEmploymentTypes);
                         setCurrentPage(1);
                       }}
                     >

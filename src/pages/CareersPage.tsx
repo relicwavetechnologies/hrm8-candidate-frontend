@@ -322,7 +322,7 @@ export default function CareersPage() {
 
   const pageItems = useMemo(() => buildPageItems(currentPage, totalPages), [currentPage, totalPages]);
 
-  const toggle = <T extends string>(value: T, values: T[], setValues: React.Dispatch<React.SetStateAction<T[]>>) => {
+  const toggle = <T extends string>(value: T, setValues: React.Dispatch<React.SetStateAction<T[]>>) => {
     setValues((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]));
     setCurrentPage(1);
   };
@@ -429,7 +429,7 @@ export default function CareersPage() {
                     <button
                       key={industry}
                       type="button"
-                      onClick={() => toggle(industry, selectedIndustries, setSelectedIndustries)}
+                      onClick={() => toggle(industry, setSelectedIndustries)}
                       className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
                     >
                       <span className={checked ? 'h-4 w-4 rounded-[6px] bg-[#4e61f6]' : 'h-4 w-4 rounded-[6px] border-[1.5px] border-[#4e61f6]'} />
@@ -455,7 +455,7 @@ export default function CareersPage() {
                     <button
                       key={option}
                       type="button"
-                      onClick={() => toggle(option, selectedCompanySizes, setSelectedCompanySizes)}
+                      onClick={() => toggle(option, setSelectedCompanySizes)}
                       className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
                     >
                       <span className={checked ? 'h-4 w-4 rounded-[6px] bg-[#4e61f6]' : 'h-4 w-4 rounded-[6px] border-[1.5px] border-[#4e61f6]'} />
@@ -494,7 +494,7 @@ export default function CareersPage() {
                     <button
                       key={option}
                       type="button"
-                      onClick={() => toggle(option, selectedLocations, setSelectedLocations)}
+                      onClick={() => toggle(option, setSelectedLocations)}
                       className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
                     >
                       <span className={checked ? 'h-4 w-4 rounded-[6px] bg-[#4e61f6]' : 'h-4 w-4 rounded-[6px] border-[1.5px] border-[#4e61f6]'} />
@@ -516,7 +516,7 @@ export default function CareersPage() {
               <div className="space-y-3">
                 <button
                   type="button"
-                  onClick={() => toggle('actively_hiring', selectedCompanyStage, setSelectedCompanyStage)}
+                  onClick={() => toggle<CompanyStageValue>('actively_hiring', setSelectedCompanyStage)}
                   className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
                 >
                   <span className={selectedCompanyStage.includes('actively_hiring') ? 'h-4 w-4 rounded-[6px] bg-[#4e61f6]' : 'h-4 w-4 rounded-[6px] border-[1.5px] border-[#4e61f6]'} />
@@ -525,7 +525,7 @@ export default function CareersPage() {
 
                 <button
                   type="button"
-                  onClick={() => toggle('featured', selectedCompanyStage, setSelectedCompanyStage)}
+                  onClick={() => toggle<CompanyStageValue>('featured', setSelectedCompanyStage)}
                   className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
                 >
                   <span className={selectedCompanyStage.includes('featured') ? 'h-4 w-4 rounded-[6px] bg-[#4e61f6]' : 'h-4 w-4 rounded-[6px] border-[1.5px] border-[#4e61f6]'} />
