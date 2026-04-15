@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
+  BarChart3,
   Bell,
   Briefcase,
   Building2,
@@ -12,7 +13,9 @@ import {
   CircleDollarSign,
   Globe,
   MapPin,
+  PenTool,
   Search,
+  SquareCode,
   Users2,
 } from 'lucide-react';
 
@@ -227,6 +230,7 @@ export default function CompanyDetailPage() {
   const cultureHighlights = useMemo(() => {
     return Array.isArray(company?.cultureHighlights) ? company.cultureHighlights.filter((item) => text(item)) : [];
   }, [company?.cultureHighlights]);
+  const cultureImages = Array.isArray(company?.images) ? company.images.filter((item) => text(item)).slice(0, 2) : [];
 
   const founded = company?.yearFounded || null;
   const companySize = titleCase(company?.companySize) || null;
@@ -321,15 +325,15 @@ export default function CompanyDetailPage() {
 
         <section className="mx-auto -mt-8 w-full max-w-[1276px] px-2">
           <div className="relative border border-[#e8e8e8] bg-white px-6 pb-5 pt-5">
-            <div className="absolute -top-9 left-6 flex h-[86px] w-[86px] items-center justify-center rounded-[18px] border-[2px] border-[#e8e8e8] bg-[#ffeeee]">
+            <div className="absolute -top-[52px] left-10 flex h-[140px] w-[140px] items-center justify-center rounded-[28px] border-[3px] border-[#d5d7da] bg-[#ffeeee]">
               {company.logoUrl ? (
-                <img src={company.logoUrl} alt={companyName} className="h-[54px] w-[54px] rounded-[10px] object-cover" />
+                <img src={company.logoUrl} alt={companyName} className="h-[82px] w-[82px] rounded-[14px] object-cover" />
               ) : (
-                <span className="text-[28px] font-semibold text-[#ef6b6b]">{initials}</span>
+                <span className="text-[50px] font-semibold leading-[1] text-[#ef6b6b]">{initials}</span>
               )}
             </div>
 
-            <div className="pl-[104px]">
+            <div className="pl-[196px] pt-1">
               <h1 className="text-[34px] font-medium leading-[44px] text-[#191919]">{companyName}</h1>
               {aboutParagraphs[0] ? <p className="mt-1 text-[14px] leading-[24px] text-[#656565]">{aboutParagraphs[0]}</p> : null}
               <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -396,28 +400,37 @@ export default function CompanyDetailPage() {
               </div>
             </article>
 
-            {cultureHighlights.length > 0 || (company.images && company.images.length > 0) ? (
+            {cultureHighlights.length > 0 || cultureImages.length > 0 ? (
               <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
                 <h2 className="text-[32px] font-medium leading-[44px] text-[#191919]">Our Culture</h2>
-                <div className="mt-4 grid gap-4 md:grid-cols-[1fr_180px]">
+                <div className="mt-4 grid gap-4 md:grid-cols-[1fr_308px]">
                   <div className="space-y-3">
                     {cultureHighlights.length > 0 ? (
                       cultureHighlights.slice(0, 4).map((item, index) => (
-                        <p key={`${item}-${index}`} className="inline-flex items-center gap-2 text-[16px] leading-[26px] text-[#474747]">
-                          <CheckCircle2 className="h-4 w-4 text-[#5b67f3]" />
-                          {item}
-                        </p>
+                        <div key={`${item}-${index}`} className="flex items-start gap-3">
+                          <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-[#7a82f7]" />
+                          <p className="text-[18px] leading-[32px] text-[#474747]">{item}</p>
+                        </div>
                       ))
                     ) : (
                       <p className="text-[14px] leading-[24px] text-[#959595]">No culture highlights available.</p>
                     )}
                   </div>
 
-                  {company.images && company.images.length > 0 ? (
-                    <div className="space-y-3">
-                      {company.images.slice(0, 2).map((image, index) => (
-                        <img key={`${image}-${index}`} src={image} alt={`${companyName} culture ${index + 1}`} className="h-[95px] w-full rounded-[8px] object-cover" />
-                      ))}
+                  {cultureImages.length > 0 ? (
+                    <div className="relative hidden min-h-[294px] md:block">
+                      <img
+                        src={cultureImages[0]}
+                        alt={`${companyName} culture 1`}
+                        className="absolute right-[48px] top-0 h-[138px] w-[196px] rounded-[12px] object-cover"
+                      />
+                      {cultureImages[1] ? (
+                        <img
+                          src={cultureImages[1]}
+                          alt={`${companyName} culture 2`}
+                          className="absolute right-0 top-[124px] h-[138px] w-[196px] rounded-[12px] object-cover"
+                        />
+                      ) : null}
                     </div>
                   ) : null}
                 </div>
@@ -527,28 +540,28 @@ export default function CompanyDetailPage() {
           <aside className="space-y-4">
             <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
               <h3 className="text-[24px] font-medium leading-[36px] text-[#191919]">Quick Info</h3>
-              <div className="mt-3 space-y-3 text-[12px] leading-[16px] text-[#656565]">
+              <div className="mt-4 grid gap-2 text-[12px] leading-[16px] text-[#656565]">
                 {domain ? (
-                  <p className="inline-flex items-center gap-2">
+                  <p className="flex items-center gap-2">
                     <Globe className="h-3.5 w-3.5" />
                     {domain}
                   </p>
                 ) : null}
                 {linkedin ? (
-                  <p className="inline-flex items-center gap-2">
+                  <p className="flex items-center gap-2">
                     <CheckCircle2 className="h-3.5 w-3.5 text-[#94969c]" />
                     {linkedin}
                   </p>
                 ) : null}
                 {headquarters ? (
-                  <p className="inline-flex items-center gap-2">
+                  <p className="flex items-center gap-2">
                     <MapPin className="h-3.5 w-3.5" />
                     {headquarters}
                   </p>
                 ) : null}
               </div>
 
-              <div className="my-4 h-px w-full bg-[#e8e8e8]" />
+              <div className="mb-4 mt-5 h-px w-full bg-[#e8e8e8]" />
 
               <button
                 type="button"
@@ -570,34 +583,60 @@ export default function CompanyDetailPage() {
 
             <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
               <h3 className="text-[24px] font-medium leading-[36px] text-[#191919]">Hiring Snapshot</h3>
-              <p className="mt-1 text-[14px] leading-[24px] text-[#656565]">Currently hiring for:</p>
+              <p className="mt-1 text-[16px] leading-[26px] text-[#656565]">Currently hiring for:</p>
 
-              <div className="mt-3 space-y-2">
+              <div className="mt-4 space-y-3">
                 {hiringSnapshot.length > 0 ? (
-                  hiringSnapshot.map((entry) => (
-                    <div key={entry.name} className="flex items-center justify-between rounded-[8px] border border-[#e8e8e8] px-3 py-2">
-                      <p className="text-[12px] leading-[16px] text-[#474747]">{entry.name}</p>
-                      <span className="text-[10px] leading-[14px] text-[#656565]">{entry.count} roles</span>
-                    </div>
-                  ))
+                  hiringSnapshot.map((entry, index) => {
+                    const iconClass = index === 0 ? 'text-[#5b67f3]' : index === 1 ? 'text-[#7a5af8]' : 'text-[#12b76a]';
+                    const Icon = index === 0 ? SquareCode : index === 1 ? PenTool : BarChart3;
+
+                    return (
+                      <div key={entry.name} className="flex items-center justify-between rounded-[10px] border border-[#e8e8e8] px-3 py-2.5">
+                        <div className="flex items-center gap-3">
+                          <span className="inline-flex h-6 w-6 items-center justify-center rounded-[6px] bg-[#f5f7ff]">
+                            <Icon className={`h-4 w-4 ${iconClass}`} />
+                          </span>
+                          <p className="text-[16px] font-normal leading-[26px] text-[#656565]">{entry.name}</p>
+                        </div>
+                        <span className="rounded-full border border-[#e8e8e8] bg-[#fafafa] px-3 py-[1px] text-[16px] font-normal leading-[26px] text-[#656565]">
+                          {entry.count} roles
+                        </span>
+                      </div>
+                    );
+                  })
                 ) : (
                   <p className="text-[14px] leading-[24px] text-[#959595]">No active roles available.</p>
                 )}
               </div>
 
-              <button
-                type="button"
-                onClick={() => navigate(`/jobs?search=${encodeURIComponent(companyName)}`)}
-                className="mt-4 inline-flex w-full items-center justify-center gap-2 text-[12px] font-semibold leading-[16px] text-[#5b67f3]"
-              >
-                See All Open Roles
-                <ChevronRight className="h-4 w-4" />
-              </button>
+              {hiringSnapshot.length > 0 ? (
+                <>
+                  <div className="mb-4 mt-5 h-px w-full bg-[#e8e8e8]" />
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/jobs?search=${encodeURIComponent(companyName)}`)}
+                    className="inline-flex w-full items-center justify-center gap-2 text-[16px] font-medium leading-[26px] text-[#4f5dff]"
+                  >
+                    See All Open Roles
+                    <ChevronRight className="h-5 w-5" />
+                  </button>
+                </>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/jobs?search=${encodeURIComponent(companyName)}`)}
+                  className="mt-4 inline-flex w-full items-center justify-center gap-2 text-[12px] font-semibold leading-[16px] text-[#5b67f3]"
+                >
+                  See All Open Roles
+                  <ChevronRight className="h-4 w-4" />
+                </button>
+              )}
             </article>
 
-            {benefits.length > 0 ? (
-              <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
-                <h3 className="text-[24px] font-medium leading-[36px] text-[#191919]">Benefits &amp; Perks</h3>
+            <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
+              <h3 className="text-[24px] font-medium leading-[36px] text-[#191919]">Benefits &amp; Perks</h3>
+              {benefits.length > 0 ? (
                 <div className="mt-3 flex flex-wrap gap-2">
                   {benefits.map((item) => (
                     <span
@@ -608,8 +647,10 @@ export default function CompanyDetailPage() {
                     </span>
                   ))}
                 </div>
-              </article>
-            ) : null}
+              ) : (
+                <p className="mt-3 text-[14px] leading-[24px] text-[#959595]">No benefits listed.</p>
+              )}
+            </article>
           </aside>
         </section>
       </main>

@@ -98,6 +98,28 @@ function postedAgo(job: PublicJob): string {
   return formatDistanceToNow(parsed, { addSuffix: true });
 }
 
+function similarityScore(current: PublicJob, candidate: PublicJob): number {
+  let score = 0;
+
+  if (current.category && candidate.category && current.category === candidate.category) score += 5;
+  if (current.department && candidate.department && current.department === candidate.department) score += 4;
+
+  const currentEmployment = String(current.employmentType || current.employment_type || '').toUpperCase();
+  const candidateEmployment = String(candidate.employmentType || candidate.employment_type || '').toUpperCase();
+  if (currentEmployment && candidateEmployment && currentEmployment === candidateEmployment) score += 2;
+
+  const currentWork = String(current.workArrangement || current.work_arrangement || '').toUpperCase();
+  const candidateWork = String(candidate.workArrangement || candidate.work_arrangement || '').toUpperCase();
+  if (currentWork && candidateWork && currentWork === candidateWork) score += 2;
+
+  const currentTags = normalizeList(current.promotionalTags || current.promotional_tags).map((tag) => tag.toLowerCase());
+  const candidateTags = normalizeList(candidate.promotionalTags || candidate.promotional_tags).map((tag) => tag.toLowerCase());
+  const overlap = candidateTags.filter((tag) => currentTags.includes(tag)).length;
+  score += Math.min(3, overlap);
+
+  return score;
+}
+
 export default function JobDetailPage() {
   const { id } = useParams<{ id: string }>();
   const location = useLocation();
@@ -134,11 +156,27 @@ export default function JobDetailPage() {
 
         setJob(normalizedJob || null);
 
-        if (relatedResponse.success && relatedResponse.data?.jobs) {
-          setRelatedJobs(relatedResponse.data.jobs.filter((item) => item.id !== id).slice(0, 3));
-        } else {
-          setRelatedJobs([]);
+        let related = relatedResponse.success && relatedResponse.data?.jobs
+          ? relatedResponse.data.jobs.filter((item) => item.id !== id).slice(0, 3)
+          : [];
+
+        if (related.length === 0 && normalizedJob) {
+          const fallbackResponse = await jobService.getPublicJobs({
+            limit: 18,
+            search: normalizedJob.department || normalizedJob.category || normalizedJob.title,
+          });
+
+          if (fallbackResponse.success && fallbackResponse.data?.jobs) {
+            related = fallbackResponse.data.jobs
+              .filter((item) => item.id !== normalizedJob.id)
+              .map((item) => ({ item, score: similarityScore(normalizedJob, item) }))
+              .sort((a, b) => b.score - a.score)
+              .slice(0, 3)
+              .map((entry) => entry.item);
+          }
         }
+
+        setRelatedJobs(related);
 
         if (normalizedJob && hasTrackedView.current !== id) {
           hasTrackedView.current = id;
@@ -540,20 +578,27 @@ export default function JobDetailPage() {
                 </div>
               </div>
 
-              <div className="mt-5 space-y-2">
+              <div className="mt-5 space-y-3">
                 {job.company?.verificationStatus === 'VERIFIED' ? (
-                  <p className="inline-flex items-center gap-2 text-[14px] leading-[24px] text-[#959595]">
-                    <CheckCircle2 className="h-4 w-4 text-[#2196f3]" />
+                  <p className="flex items-center gap-2 text-[14px] leading-[22px] text-[#959595]">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-[#2196f3]" />
                     Verified employer
                   </p>
                 ) : null}
                 {companyOpenPositions > 0 ? (
                   <>
-                    <p className="inline-flex items-center gap-2 text-[14px] leading-[24px] text-[#959595]">
-                      <span className="h-1.5 w-1.5 rounded-full bg-[#00c465]" />
+                    <p className="flex items-center gap-2 text-[14px] leading-[22px] text-[#959595]">
+                      <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#00c465]" />
                       Actively hiring
                     </p>
-                    <p className="text-[12px] font-medium leading-[16px] text-[#4e61f6]">{companyOpenPositions} open positions</p>
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/companies/${job.company?.id || ''}`)}
+                      className="inline-flex items-center gap-2 pt-0.5 text-[12px] font-medium leading-[16px] text-[#4e61f6]"
+                    >
+                      {companyOpenPositions} open positions
+                      <span aria-hidden="true" className="text-[16px] leading-none">→</span>
+                    </button>
                   </>
                 ) : null}
               </div>
