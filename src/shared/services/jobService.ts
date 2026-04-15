@@ -70,6 +70,8 @@ export interface PublicJob {
     name: string;
     website: string;
     domain?: string;
+    verificationStatus?: string | null;
+    jobCount?: number;
     logoUrl?: string | null;
     aboutCompany?: string | null;
   };
@@ -98,6 +100,8 @@ export interface ApprovedCompany {
   companySize?: string | null;
   industries?: string[] | null;
   yearFounded?: number | null;
+  benefits?: string[] | null;
+  cultureHighlights?: string[] | null;
   primaryLocation?: {
     id?: string;
     name?: string;

@@ -70,9 +70,10 @@ function salaryText(job: PublicJob): string {
 
 function extractLocation(job: PublicJob) {
   const city = job.jobLocation?.city?.trim();
-  const fallback = job.location?.trim() || 'Location not specified';
-  if (!city) return fallback;
-  return fallback.includes(city) ? fallback : `${city}, ${fallback}`;
+  const base = job.location?.trim() || '';
+  if (!city) return base;
+  if (!base) return city;
+  return base.includes(city) ? base : `${city}, ${base}`;
 }
 
 function getPostedDate(job: PublicJob): Date | null {
@@ -116,10 +117,10 @@ export default function JobSearchPage() {
   const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [locationFilter, setLocationFilter] = useState('');
-  const [selectedWorkModels, setSelectedWorkModels] = useState<string[]>(['REMOTE']);
-  const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useState<string[]>(['FULL_TIME']);
-  const [salaryRange, setSalaryRange] = useState(120000);
-  const [postedDateFilter, setPostedDateFilter] = useState<PostedDateFilter>('24h');
+  const [selectedWorkModels, setSelectedWorkModels] = useState<string[]>([]);
+  const [selectedEmploymentTypes, setSelectedEmploymentTypes] = useState<string[]>([]);
+  const [salaryRange, setSalaryRange] = useState(0);
+  const [postedDateFilter, setPostedDateFilter] = useState<PostedDateFilter>('month');
   const [sortBy, setSortBy] = useState<SortValue>('relevance');
   const [currentPage, setCurrentPage] = useState(1);
 
@@ -304,7 +305,7 @@ export default function JobSearchPage() {
     setSelectedWorkModels([]);
     setSelectedEmploymentTypes([]);
     setSalaryRange(0);
-    setPostedDateFilter('24h');
+    setPostedDateFilter('month');
     setCurrentPage(1);
   };
 
@@ -325,25 +326,25 @@ export default function JobSearchPage() {
   return (
     <div className="min-h-screen bg-[#fafafa] font-['Poppins',sans-serif] text-[#474747]">
       <header className="border-b border-[#e8e8e8] bg-white">
-        <div className="mx-auto flex h-24 w-full max-w-[1276px] items-end justify-between pb-0">
+        <div className="mx-auto flex h-[72px] w-full max-w-[1276px] items-center justify-between">
           <img src={logoDark} alt="HRM8" className="h-[28px] w-auto" />
 
-          <nav className="flex items-center gap-16 text-[16px]">
-            <button className="flex h-[64px] items-center gap-2 border-b border-[#5b67f3] px-4 pb-[15px] pt-4 text-[#5b67f3]">
+          <nav className="flex h-full items-center gap-12 text-[16px]">
+            <button className="inline-flex h-full items-center gap-2 border-b border-[#5b67f3] px-4 text-[#5b67f3]">
               <Briefcase className="h-5 w-5" />
               Find Jobs
             </button>
-            <Link to="/careers" className="flex h-[64px] items-center gap-2 px-4 pb-[15px] pt-4 text-[#656565]">
+            <Link to="/careers" className="inline-flex h-full items-center gap-2 px-4 text-[#656565]">
               <Building2 className="h-5 w-5" />
               Companies
             </Link>
-            <button className="flex h-[64px] items-center gap-2 px-4 pb-[15px] pt-4 text-[#656565]">
+            <button className="inline-flex h-full items-center gap-2 px-4 text-[#656565]">
               <Globe className="h-5 w-5" />
               Salaries
             </button>
           </nav>
 
-          <div className="flex items-center gap-6 pb-7">
+          <div className="flex items-center gap-6">
             <div className="h-9 w-9 overflow-hidden rounded-full border border-black/10 bg-[#e0e0e0]">
               <div className="flex h-full w-full items-center justify-center text-[12px] font-medium text-[#474747]">
                 {candidate?.firstName?.[0]?.toUpperCase() || 'U'}
@@ -357,7 +358,7 @@ export default function JobSearchPage() {
       <section className="border-b border-[#e8e8e8] px-4 py-[54px]">
         <div className="mx-auto flex max-w-[1040px] flex-col items-center gap-14">
           <div className="text-center">
-            <h1 className="text-[44px] font-semibold leading-[44px] text-[#474747]">Find Your Next Opportunity</h1>
+            <h1 className="text-[40px] font-semibold leading-[44px] text-[#474747]">Find Your Next Opportunity</h1>
             <p className="mt-3 text-[16px] font-medium leading-[26px] text-[#656565]">
               Explore roles from verified companies using HRM8
             </p>
@@ -516,7 +517,7 @@ export default function JobSearchPage() {
               />
               <div className="mt-2 flex items-center justify-between text-[14px] leading-[24px] text-[#959595]">
                 <span>$0</span>
-                <span>$120k+</span>
+                <span>${Math.round(salaryRange / 1000)}k+</span>
                 <span>$200k+</span>
               </div>
             </div>
@@ -596,13 +597,16 @@ export default function JobSearchPage() {
           ) : (
             <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
               {paginatedJobs.map((job) => {
-                const companyName = job.company?.name || 'Company';
+                const companyName = (job.company?.name || '').trim();
                 const companyMark = companyName.trim().charAt(0).toUpperCase();
                 const isSaved = savedJobIds.has(job.id);
                 const workArrangement = normalizeWorkArrangement(job);
                 const employmentType = normalizeEmploymentType(job);
                 const location = extractLocation(job);
                 const summary = (job.jobSummary || job.job_summary || job.description || '').trim();
+                const isVerifiedEmployer = job.company?.verificationStatus === 'VERIFIED';
+                const workModelLabel = workArrangement === 'ON_SITE' ? 'On-site' : workArrangement === 'HYBRID' ? 'Hybrid' : workArrangement === 'REMOTE' ? 'Remote' : '';
+                const employmentLabel = employmentType === 'PART_TIME' ? 'Part-Time' : employmentType === 'CONTRACT' ? 'Contract' : employmentType === 'FULL_TIME' ? 'Full-Time' : '';
 
                 return (
                   <article key={job.id} className="rounded-[12px] border border-[#e8e8e8] bg-white p-4">
@@ -615,26 +619,32 @@ export default function JobSearchPage() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between gap-2">
                               <h3 className="truncate text-[18px] font-medium leading-[28px] text-[#474747]">{job.title}</h3>
-                              <span className="inline-flex items-center gap-1 rounded-full border border-[#abefc6] bg-[#ecfdf3] px-2 py-0.5 text-[12px] text-[#7faf51]">
-                                <CheckCircle2 className="h-3 w-3" />
-                                Verified
-                              </span>
+                              {isVerifiedEmployer ? (
+                                <span className="inline-flex items-center gap-1 rounded-full border border-[#abefc6] bg-[#ecfdf3] px-2 py-0.5 text-[12px] text-[#7faf51]">
+                                  <CheckCircle2 className="h-3 w-3" />
+                                  Verified
+                                </span>
+                              ) : null}
                             </div>
                             <p className="truncate text-[16px] leading-[26px] text-[#656565]">
-                              {companyName} • {location}
+                              {companyName || '—'}{location ? ` • ${location}` : ''}
                             </p>
                           </div>
                         </div>
 
                         <div className="flex items-center gap-[15px]">
-                          <span className="inline-flex items-center gap-1 rounded-full bg-[#e8e8e8] px-2 py-0.5 text-[14px] leading-[24px] text-[#474747]">
-                            <Globe className="h-4 w-4" />
-                            {workArrangement === 'ON_SITE' ? 'On-site' : workArrangement === 'HYBRID' ? 'Hybrid' : 'Remote'}
-                          </span>
-                          <span className="inline-flex items-center gap-1 rounded-full bg-[#e8e8e8] px-2 py-0.5 text-[14px] leading-[24px] text-[#474747]">
-                            <Briefcase className="h-4 w-4" />
-                            {employmentType === 'PART_TIME' ? 'Part-Time' : employmentType === 'CONTRACT' ? 'Contract' : 'Full-Time'}
-                          </span>
+                          {workModelLabel ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#e8e8e8] px-2 py-0.5 text-[14px] leading-[24px] text-[#474747]">
+                              <Globe className="h-4 w-4" />
+                              {workModelLabel}
+                            </span>
+                          ) : null}
+                          {employmentLabel ? (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-[#e8e8e8] px-2 py-0.5 text-[14px] leading-[24px] text-[#474747]">
+                              <Briefcase className="h-4 w-4" />
+                              {employmentLabel}
+                            </span>
+                          ) : null}
                         </div>
 
                         <div className="flex items-center justify-between">

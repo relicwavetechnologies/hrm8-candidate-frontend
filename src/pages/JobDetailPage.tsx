@@ -29,7 +29,7 @@ function formatEmploymentType(type?: string): string {
   if (normalized === 'PART_TIME') return 'Part-Time';
   if (normalized === 'CONTRACT') return 'Contract';
   if (normalized === 'CASUAL') return 'Casual';
-  return 'Full-Time';
+  return '';
 }
 
 function formatWorkArrangement(type?: string): string {
@@ -37,7 +37,7 @@ function formatWorkArrangement(type?: string): string {
   if (normalized === 'REMOTE') return 'Remote';
   if (normalized === 'HYBRID') return 'Hybrid';
   if (normalized === 'ON_SITE') return 'On-site';
-  return 'Remote';
+  return '';
 }
 
 function salaryText(job: PublicJob): string {
@@ -248,36 +248,18 @@ export default function JobDetailPage() {
   }, [job]);
 
   const responsibilities = useMemo(() => {
-    const list = normalizeList(job?.responsibilities);
-    if (list.length > 0) return list;
-    return [
-      'Lead end-to-end design initiatives across web and mobile experiences.',
-      'Collaborate with product and engineering teams on execution.',
-      'Run user research and convert insights into product decisions.',
-      'Improve design systems and accessibility standards.',
-    ];
+    return normalizeList(job?.responsibilities);
   }, [job]);
 
   const requirements = useMemo(() => {
-    const list = normalizeList(job?.requirements);
-    if (list.length > 0) return list;
-    return [
-      'Strong portfolio demonstrating product design outcomes.',
-      'Experience with component-based design systems.',
-      'Excellent collaboration and communication skills.',
-      'Comfortable with data-heavy problem spaces.',
-      'Background in shipping high-quality digital products.',
-      'Ability to thrive in cross-functional teams.',
-    ];
+    return normalizeList(job?.requirements);
   }, [job]);
 
   const mustHaves = requirements.slice(0, 4);
   const niceToHave = requirements.slice(4);
 
   const benefits = useMemo(() => {
-    const list = normalizeList(job?.benefits);
-    if (list.length > 0) return list.slice(0, 8);
-    return ['Remote-first', 'Health insurance', '401k matching', 'Wellness stipend', 'Unlimited PTO'];
+    return normalizeList(job?.benefits).slice(0, 8);
   }, [job]);
 
   if (isLoading) {
@@ -306,50 +288,31 @@ export default function JobDetailPage() {
     );
   }
 
-  const companyOpenPositions = Math.max(1, relatedJobs.length + 1);
-  const fallbackSimilar = [
-    {
-      title: 'UX Designer',
-      company: 'Techflow',
-      location: 'Remote',
-      salary: '$100K - $130K',
-    },
-    {
-      title: 'Lead Product Designer',
-      company: 'InnovateApp',
-      location: 'New York, NY',
-      salary: '$140K - $180K',
-    },
-    {
-      title: 'UI/UX Designer',
-      company: 'StartupX',
-      location: 'San Francisco, CA',
-      salary: '$90K - $120K',
-    },
-  ];
+  const companyOpenPositions = Math.max(0, Number(job.company?.jobCount || 0));
+  const companyName = (job.company?.name || '').trim();
 
   return (
     <div className="min-h-screen bg-[#fafafa] font-['Poppins',sans-serif] text-[#474747]">
       <header className="border-b border-[#e8e8e8] bg-white">
-        <div className="mx-auto flex h-24 w-full max-w-[1276px] items-end justify-between">
+        <div className="mx-auto flex h-[72px] w-full max-w-[1276px] items-center justify-between">
           <img src={logoDark} alt="HRM8" className="h-[28px] w-auto" />
 
-          <nav className="flex items-center gap-16 text-[16px]">
-            <Link to="/jobs" className="flex h-[64px] items-center gap-2 border-b border-[#5b67f3] px-4 pb-[15px] pt-4 text-[#5b67f3]">
+          <nav className="flex h-full items-center gap-12 text-[16px]">
+            <Link to="/jobs" className="inline-flex h-full items-center gap-2 border-b border-[#5b67f3] px-4 text-[#5b67f3]">
               <Briefcase className="h-5 w-5" />
               Find Jobs
             </Link>
-            <Link to="/careers" className="flex h-[64px] items-center gap-2 px-4 pb-[15px] pt-4 text-[#656565]">
+            <Link to="/careers" className="inline-flex h-full items-center gap-2 px-4 text-[#656565]">
               <Building2 className="h-5 w-5" />
               Companies
             </Link>
-            <button className="flex h-[64px] items-center gap-2 px-4 pb-[15px] pt-4 text-[#656565]" type="button">
+            <button className="inline-flex h-full items-center gap-2 px-4 text-[#656565]" type="button">
               <Globe className="h-5 w-5" />
               Salaries
             </button>
           </nav>
 
-          <div className="flex items-center gap-6 pb-7">
+          <div className="flex items-center gap-6">
             <div className="h-9 w-9 overflow-hidden rounded-full border border-black/10 bg-[#e0e0e0]">
               <div className="flex h-full w-full items-center justify-center text-[12px] font-medium text-[#474747]">
                 {candidate?.firstName?.[0]?.toUpperCase() || 'U'}
@@ -360,7 +323,7 @@ export default function JobDetailPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1276px] pb-20 pt-10">
+      <main className="mx-auto w-full max-w-[1276px] pb-20 pt-8">
         <div className="flex flex-wrap items-center justify-between gap-4">
           <div className="flex flex-wrap items-center gap-3 text-[14px] leading-[24px]">
             <button
@@ -374,8 +337,12 @@ export default function JobDetailPage() {
             <span className="text-[#d6d6d6]">|</span>
             <span className="text-[#959595]">Jobs</span>
             <span className="text-[#b8b8b8]">›</span>
-            <span className="text-[#959595]">{job.category || 'Technology'}</span>
-            <span className="text-[#b8b8b8]">›</span>
+            {job.category ? (
+              <>
+                <span className="text-[#959595]">{job.category}</span>
+                <span className="text-[#b8b8b8]">›</span>
+              </>
+            ) : null}
             <span className="text-[#191919]">{job.title}</span>
           </div>
 
@@ -405,10 +372,12 @@ export default function JobDetailPage() {
             <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
               <div className="space-y-8 border-b border-[#e8e8e8] pb-8">
                 <div>
-                  <span className="inline-flex rounded-full bg-[#eef2ff] px-3 py-1 text-[10px] font-medium text-[#4e61f6]">
-                    {job.category || 'Technology'}
-                  </span>
-                  <h1 className="mt-4 text-[36px] font-semibold leading-[44px] text-[#191919]">{job.title}</h1>
+                  {job.category ? (
+                    <span className="inline-flex rounded-full bg-[#eef2ff] px-3 py-1 text-[10px] font-medium text-[#4e61f6]">
+                      {job.category}
+                    </span>
+                  ) : null}
+                  <h1 className="mt-4 text-[40px] font-semibold leading-[44px] text-[#191919]">{job.title}</h1>
 
                   <div className="mt-4 flex items-center gap-3">
                     {job.company?.logoUrl ? (
@@ -418,18 +387,22 @@ export default function JobDetailPage() {
                         {(job.company?.name || 'H').charAt(0).toUpperCase()}
                       </div>
                     )}
-                    <p className="text-[16px] leading-[26px] text-[#656565]">{job.company?.name || 'Unknown Company'}</p>
+                    <p className="text-[16px] leading-[26px] text-[#656565]">{companyName || '—'}</p>
                   </div>
 
                   <div className="mt-4 flex flex-wrap items-center gap-5 text-[14px] leading-[24px] text-[#656565]">
-                    <span className="inline-flex items-center gap-2">
-                      <MapPin className="h-4 w-4" />
-                      {job.location} ({workArrangement})
-                    </span>
-                    <span className="inline-flex items-center gap-2">
-                      <Briefcase className="h-4 w-4" />
-                      {employmentType}
-                    </span>
+                    {job.location ? (
+                      <span className="inline-flex items-center gap-2">
+                        <MapPin className="h-4 w-4" />
+                        {job.location}{workArrangement ? ` (${workArrangement})` : ''}
+                      </span>
+                    ) : null}
+                    {employmentType ? (
+                      <span className="inline-flex items-center gap-2">
+                        <Briefcase className="h-4 w-4" />
+                        {employmentType}
+                      </span>
+                    ) : null}
                     <span className="inline-flex items-center gap-2">
                       <Circle className="h-3 w-3 fill-current" />
                       {salary}
@@ -452,28 +425,36 @@ export default function JobDetailPage() {
 
                 <section>
                   <h2 className="text-[26px] font-medium leading-[36px] text-[#191919]">What You&apos;ll Do</h2>
-                  <ul className="mt-4 space-y-4 text-[16px] leading-[28px] text-[#656565]">
-                    {responsibilities.map((item, index) => (
-                      <li key={`responsibility-${index}`} className="flex gap-3">
-                        <span className="mt-[11px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#656565]" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  {responsibilities.length > 0 ? (
+                    <ul className="mt-4 space-y-4 text-[16px] leading-[28px] text-[#656565]">
+                      {responsibilities.map((item, index) => (
+                        <li key={`responsibility-${index}`} className="flex gap-3">
+                          <span className="mt-[11px] h-1.5 w-1.5 shrink-0 rounded-full bg-[#656565]" />
+                          <span>{item}</span>
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-4 text-[16px] leading-[28px] text-[#959595]">No responsibilities listed.</p>
+                  )}
                 </section>
 
                 <section>
                   <h2 className="text-[26px] font-medium leading-[36px] text-[#191919]">What We&apos;re Looking For</h2>
 
-                  <p className="mt-4 text-[12px] uppercase tracking-[0.08em] text-[#b8b8b8]">Must-haves</p>
-                  <ul className="mt-3 space-y-3">
-                    {mustHaves.map((item, index) => (
-                      <li key={`must-${index}`} className="flex items-start gap-3 text-[16px] leading-[26px] text-[#656565]">
-                        <CheckCircle2 className="mt-[2px] h-5 w-5 shrink-0 text-[#5b67f3]" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
+                  {mustHaves.length > 0 ? (
+                    <>
+                      <p className="mt-4 text-[12px] uppercase tracking-[0.08em] text-[#b8b8b8]">Must-haves</p>
+                      <ul className="mt-3 space-y-3">
+                        {mustHaves.map((item, index) => (
+                          <li key={`must-${index}`} className="flex items-start gap-3 text-[16px] leading-[26px] text-[#656565]">
+                            <CheckCircle2 className="mt-[2px] h-5 w-5 shrink-0 text-[#5b67f3]" />
+                            <span>{item}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  ) : null}
 
                   {niceToHave.length > 0 ? (
                     <>
@@ -488,22 +469,30 @@ export default function JobDetailPage() {
                       </ul>
                     </>
                   ) : null}
+
+                  {requirements.length === 0 ? (
+                    <p className="mt-4 text-[16px] leading-[28px] text-[#959595]">No requirements listed.</p>
+                  ) : null}
                 </section>
               </div>
             </article>
 
             <article className="w-full rounded-[12px] border border-[#e8e8e8] bg-white p-5 xl:w-[473px]">
               <h3 className="text-[18px] font-medium leading-[28px] text-[#191919]">Benefits &amp; Perks</h3>
-              <div className="mt-5 flex flex-wrap gap-2">
-                {benefits.map((item, index) => (
-                  <span
-                    key={`benefit-${index}`}
-                    className="inline-flex items-center rounded-full border border-[#e9eaeb] bg-[#fafafa] px-3 py-[2px] text-[12px] font-medium leading-[18px] text-[#414651]"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
+              {benefits.length > 0 ? (
+                <div className="mt-5 flex flex-wrap gap-2">
+                  {benefits.map((item, index) => (
+                    <span
+                      key={`benefit-${index}`}
+                      className="inline-flex items-center rounded-full border border-[#e9eaeb] bg-[#fafafa] px-3 py-[2px] text-[12px] font-medium leading-[18px] text-[#414651]"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-[14px] leading-[24px] text-[#959595]">No benefits listed.</p>
+              )}
             </article>
           </section>
 
@@ -542,23 +531,31 @@ export default function JobDetailPage() {
                 )}
 
                 <div>
-                  <p className="text-[16px] font-medium leading-[26px] text-[#656565]">{job.company?.name || 'Unknown Company'}</p>
-                  <span className="inline-flex rounded-full border border-[#e9eaeb] bg-[#fafafa] px-2 py-[2px] text-[12px] font-medium leading-[18px] text-[#414651]">
-                    Software development
-                  </span>
+                  <p className="text-[16px] font-medium leading-[26px] text-[#656565]">{companyName || '—'}</p>
+                  {job.category ? (
+                    <span className="inline-flex rounded-full border border-[#e9eaeb] bg-[#fafafa] px-2 py-[2px] text-[12px] font-medium leading-[18px] text-[#414651]">
+                      {job.category}
+                    </span>
+                  ) : null}
                 </div>
               </div>
 
               <div className="mt-5 space-y-2">
-                <p className="inline-flex items-center gap-2 text-[14px] leading-[24px] text-[#959595]">
-                  <CheckCircle2 className="h-4 w-4 text-[#2196f3]" />
-                  Verified employer
-                </p>
-                <p className="inline-flex items-center gap-2 text-[14px] leading-[24px] text-[#959595]">
-                  <span className="h-1.5 w-1.5 rounded-full bg-[#00c465]" />
-                  Actively hiring
-                </p>
-                <p className="text-[12px] font-medium leading-[16px] text-[#4e61f6]">{companyOpenPositions} open positions</p>
+                {job.company?.verificationStatus === 'VERIFIED' ? (
+                  <p className="inline-flex items-center gap-2 text-[14px] leading-[24px] text-[#959595]">
+                    <CheckCircle2 className="h-4 w-4 text-[#2196f3]" />
+                    Verified employer
+                  </p>
+                ) : null}
+                {companyOpenPositions > 0 ? (
+                  <>
+                    <p className="inline-flex items-center gap-2 text-[14px] leading-[24px] text-[#959595]">
+                      <span className="h-1.5 w-1.5 rounded-full bg-[#00c465]" />
+                      Actively hiring
+                    </p>
+                    <p className="text-[12px] font-medium leading-[16px] text-[#4e61f6]">{companyOpenPositions} open positions</p>
+                  </>
+                ) : null}
               </div>
 
               <div className="my-5 h-px w-full bg-[#e8e8e8]" />
@@ -572,44 +569,30 @@ export default function JobDetailPage() {
               </button>
             </article>
 
-            <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
-              <h3 className="text-[18px] font-medium leading-[28px] text-[#474747]">Similar Roles</h3>
+            {relatedJobs.length > 0 ? (
+              <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
+                <h3 className="text-[18px] font-medium leading-[28px] text-[#474747]">Similar Roles</h3>
 
-              <div className="mt-5 space-y-5">
-                {(relatedJobs.length > 0
-                  ? relatedJobs.map((item) => ({
-                      title: item.title,
-                      company: item.company?.name || 'Company',
-                      location: item.location || 'Remote',
-                      salary: salaryText(item),
-                      id: item.id,
-                    }))
-                  : fallbackSimilar
-                ).map((item, index, list) => (
-                  <div key={`${item.title}-${index}`}>
-                    {'id' in item && item.id ? (
+                <div className="mt-5 space-y-5">
+                  {relatedJobs.map((item, index, list) => (
+                    <div key={`${item.id}-${index}`}>
                       <Link to={`/jobs/${item.id}`} className="block">
                         <p className="text-[16px] leading-[26px] text-[#474747]">{item.title}</p>
-                        <p className="mt-1 text-[14px] leading-[24px] text-[#656565]">{item.company} • {item.location}</p>
-                        <p className="mt-1 text-[14px] leading-[24px] text-[#656565]">{item.salary}</p>
+                        <p className="mt-1 text-[14px] leading-[24px] text-[#656565]">
+                          {item.company?.name || '—'}{item.location ? ` • ${item.location}` : ''}
+                        </p>
+                        <p className="mt-1 text-[14px] leading-[24px] text-[#656565]">{salaryText(item)}</p>
                       </Link>
-                    ) : (
-                      <>
-                        <p className="text-[16px] leading-[26px] text-[#474747]">{item.title}</p>
-                        <p className="mt-1 text-[14px] leading-[24px] text-[#656565]">{item.company} • {item.location}</p>
-                        <p className="mt-1 text-[14px] leading-[24px] text-[#656565]">{item.salary}</p>
-                      </>
-                    )}
+                      {index < list.length - 1 ? <div className="mt-5 h-px w-full bg-[#e8e8e8]" /> : null}
+                    </div>
+                  ))}
+                </div>
 
-                    {index < list.length - 1 ? <div className="mt-5 h-px w-full bg-[#e8e8e8]" /> : null}
-                  </div>
-                ))}
-              </div>
-
-              <button type="button" onClick={() => navigate('/jobs')} className="mt-6 w-full text-[18px] font-medium leading-[28px] text-[#4e61f6]">
-                See More Jobs
-              </button>
-            </article>
+                <button type="button" onClick={() => navigate('/jobs')} className="mt-6 w-full text-[18px] font-medium leading-[28px] text-[#4e61f6]">
+                  See More Jobs
+                </button>
+              </article>
+            ) : null}
           </aside>
         </div>
       </main>

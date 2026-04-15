@@ -40,8 +40,7 @@ function extractSummary(company: ApprovedCompany): string {
     .replace(/\s+/g, ' ')
     .trim();
 
-  if (base) return compact(base, 86);
-  return 'Building the future of seamless data integration for enterprise teams.';
+  return base ? compact(base, 86) : '';
 }
 
 function titleCase(input?: string | null): string {
@@ -55,7 +54,7 @@ function titleCase(input?: string | null): string {
 
 function companyIndustry(company: ApprovedCompany): string {
   const first = (company.industries || []).find((item) => text(item));
-  return first ? titleCase(first) : 'Technology';
+  return first ? titleCase(first) : '';
 }
 
 function companyLocation(company: ApprovedCompany): string {
@@ -66,12 +65,12 @@ function companyLocation(company: ApprovedCompany): string {
     if (/remote/i.test(value)) return value;
     return value;
   }
-  return 'Remote';
+  return '';
 }
 
-function normalizeCompanySize(company: ApprovedCompany): '0-50 employees' | '51-200 employees' | '201-1000 employees' | '1000+ employees' {
+function normalizeCompanySize(company: ApprovedCompany): '0-50 employees' | '51-200 employees' | '201-1000 employees' | '1000+ employees' | '' {
   const size = text(company.companySize).toLowerCase();
-  if (!size) return '0-50 employees';
+  if (!size) return '';
 
   const numbers = size.match(/\d+/g)?.map((v) => Number(v)) || [];
   const min = numbers[0] || 0;
@@ -127,6 +126,7 @@ function CompanyCard({ company }: { company: ApprovedCompany }) {
   const industry = companyIndustry(company);
   const location = companyLocation(company);
   const verified = company.verificationStatus === 'VERIFIED';
+  const activeHiring = company.jobCount > 0;
   const initials = text(company.name).slice(0, 1).toUpperCase() || 'C';
 
   return (
@@ -140,31 +140,39 @@ function CompanyCard({ company }: { company: ApprovedCompany }) {
       </div>
 
       <p className="mt-4 text-center text-[16px] font-medium leading-[26px] text-[#656565]">{company.name}</p>
-      <p className="mt-2 text-center text-[14px] leading-[24px] text-[#656565]">{extractSummary(company)}</p>
+      {extractSummary(company) ? <p className="mt-2 text-center text-[14px] leading-[24px] text-[#656565]">{extractSummary(company)}</p> : null}
 
-      <div className="mt-3 flex justify-center">
-        <span className="inline-flex rounded-full bg-[#eff8ff] px-2 py-[2px] text-[12px] font-medium leading-[18px] text-[#175cd3]">
-          {industry}
-        </span>
-      </div>
+      {industry ? (
+        <div className="mt-3 flex justify-center">
+          <span className="inline-flex rounded-full bg-[#eff8ff] px-2 py-[2px] text-[12px] font-medium leading-[18px] text-[#175cd3]">
+            {industry}
+          </span>
+        </div>
+      ) : null}
 
-      <div className="mt-3 flex items-center justify-center gap-2 text-[16px] leading-[26px] text-[#656565]">
-        <MapPin className="h-[18px] w-[18px]" />
-        {location}
-      </div>
+      {location ? (
+        <div className="mt-3 flex items-center justify-center gap-2 text-[16px] leading-[26px] text-[#656565]">
+          <MapPin className="h-[18px] w-[18px]" />
+          {location}
+        </div>
+      ) : null}
 
       <div className="my-4 h-px w-full bg-[#e8e8e8]" />
 
       <div className="space-y-2">
-        <p className="flex items-center justify-center gap-2 text-[14px] leading-[24px] text-[#959595]">
-          <Building2 className="h-5 w-5 text-[#4e61f6]" />
-          {verified ? 'Verified employer' : 'Official employer'}
-        </p>
+        {verified ? (
+          <p className="flex items-center justify-center gap-2 text-[14px] leading-[24px] text-[#959595]">
+            <Building2 className="h-5 w-5 text-[#4e61f6]" />
+            Verified employer
+          </p>
+        ) : null}
 
-        <p className="flex items-center justify-center gap-2 text-[14px] leading-[24px] text-[#959595]">
-          <Dot className="h-4 w-4 text-[#00c465]" />
-          Actively hiring
-        </p>
+        {activeHiring ? (
+          <p className="flex items-center justify-center gap-2 text-[14px] leading-[24px] text-[#959595]">
+            <Dot className="h-4 w-4 text-[#00c465]" />
+            Actively hiring
+          </p>
+        ) : null}
 
         <p className="flex items-center justify-center gap-2 text-[12px] font-medium leading-[16px] text-[#4e61f6]">
           <ClipboardList className="h-4 w-4" />
@@ -205,10 +213,10 @@ export default function CareersPage() {
 
   const [locationText, setLocationText] = useState('');
 
-  const [selectedIndustries, setSelectedIndustries] = useState<string[]>(['Technology']);
-  const [selectedCompanySizes, setSelectedCompanySizes] = useState<string[]>(['0-50 employees']);
-  const [selectedLocations, setSelectedLocations] = useState<LocationValue[]>(['Remote']);
-  const [selectedCompanyStage, setSelectedCompanyStage] = useState<CompanyStageValue[]>(['actively_hiring']);
+  const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
+  const [selectedCompanySizes, setSelectedCompanySizes] = useState<string[]>([]);
+  const [selectedLocations, setSelectedLocations] = useState<LocationValue[]>([]);
+  const [selectedCompanyStage, setSelectedCompanyStage] = useState<CompanyStageValue[]>([]);
 
   useEffect(() => {
     const load = async () => {
@@ -242,17 +250,7 @@ export default function CareersPage() {
   }, [allCompanies]);
 
   const industryOptions = useMemo(() => {
-    const defaults = ['Technology', 'Healthcare', 'Finance', 'Retail'];
-    const merged = defaults.map((name) => {
-      const found = industryCounts.find(([industry]) => industry === name);
-      return [name, found?.[1] || 0] as const;
-    });
-
-    industryCounts.forEach(([industry, count]) => {
-      if (!merged.find(([name]) => name === industry)) merged.push([industry, count]);
-    });
-
-    return merged;
+    return industryCounts.filter(([name]) => Boolean(name));
   }, [industryCounts]);
 
   const locationOptions = useMemo(() => {
@@ -339,27 +337,27 @@ export default function CareersPage() {
   const companySizeOptions = ['0-50 employees', '51-200 employees', '201-1000 employees', '1000+ employees'];
 
   return (
-    <div className="min-h-screen bg-[#fafafa] font-['Poppins',sans-serif] text-[#474747]">
+      <div className="min-h-screen bg-[#fafafa] font-['Poppins',sans-serif] text-[#474747]">
       <header className="border-b border-[#e8e8e8] bg-white">
-        <div className="mx-auto flex h-24 w-full max-w-[1276px] items-end justify-between">
+        <div className="mx-auto flex h-[72px] w-full max-w-[1276px] items-center justify-between">
           <img src={logoDark} alt="HRM8" className="h-[28px] w-auto" />
 
-          <nav className="flex items-center gap-16 text-[16px]">
-            <Link to="/jobs" className="flex h-[64px] items-center gap-2 px-4 pb-[15px] pt-4 text-[#656565]">
+          <nav className="flex h-full items-center gap-12 text-[16px]">
+            <Link to="/jobs" className="inline-flex h-full items-center gap-2 px-4 text-[#656565]">
               <Briefcase className="h-5 w-5" />
               Find jobs
             </Link>
-            <Link to="/careers" className="flex h-[64px] items-center gap-2 border-b border-[#5b67f3] px-4 pb-[15px] pt-4 text-[#5b67f3]">
+            <Link to="/careers" className="inline-flex h-full items-center gap-2 border-b border-[#5b67f3] px-4 text-[#5b67f3]">
               <Building2 className="h-5 w-5" />
               Companies
             </Link>
-            <button className="flex h-[64px] items-center gap-2 px-4 pb-[15px] pt-4 text-[#656565]" type="button">
+            <button className="inline-flex h-full items-center gap-2 px-4 text-[#656565]" type="button">
               <ClipboardList className="h-5 w-5" />
               Salaries
             </button>
           </nav>
 
-          <div className="flex items-center gap-6 pb-7">
+          <div className="flex items-center gap-6">
             <div className="h-9 w-9 overflow-hidden rounded-full border border-black/10 bg-[#e0e0e0]">
               <div className="flex h-full w-full items-center justify-center text-[12px] font-medium text-[#474747]">
                 {candidate?.firstName?.[0]?.toUpperCase() || 'U'}
@@ -438,7 +436,7 @@ export default function CareersPage() {
                   );
                 })}
               </div>
-              <button type="button" className="mt-3 text-[14px] leading-[24px] text-[#4e61f6]">Show more +</button>
+              {industryOptions.length > 4 ? <button type="button" className="mt-3 text-[14px] leading-[24px] text-[#4e61f6]">Show more +</button> : null}
             </section>
 
             <div className="h-px w-full bg-[#e8e8e8]" />
@@ -456,8 +454,8 @@ export default function CareersPage() {
                       key={option}
                       type="button"
                       onClick={() => toggle(option, setSelectedCompanySizes)}
-                      className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
-                    >
+                    className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
+                  >
                       <span className={checked ? 'h-4 w-4 rounded-[6px] bg-[#4e61f6]' : 'h-4 w-4 rounded-[6px] border-[1.5px] border-[#4e61f6]'} />
                       {option}
                     </button>
@@ -509,7 +507,7 @@ export default function CareersPage() {
 
             <section>
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-[16px] leading-[26px] text-[#474747]">Company Size</p>
+                <p className="text-[16px] leading-[26px] text-[#474747]">Hiring Stage</p>
                 <ChevronDown className="h-4 w-4 text-[#656565]" />
               </div>
 
@@ -539,7 +537,7 @@ export default function CareersPage() {
         <section className="min-w-0 flex-1">
           <div className="mb-4 flex items-center justify-between">
             <p className="text-[30px] font-medium leading-[40px] text-[#474747]">
-              Showing {filteredCompanies.length} companies
+              Showing {filteredCompanies.length} jobs
             </p>
             <div className="flex items-center gap-3">
               <span className="text-[16px] leading-[26px] text-[#656565]">Sort by:</span>

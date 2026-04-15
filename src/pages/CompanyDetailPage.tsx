@@ -40,11 +40,11 @@ function titleCase(value?: string | null): string {
 
 function companyIndustry(company: ApprovedCompany | null): string {
   const first = (company?.industries || []).find((item) => text(item));
-  return first ? titleCase(first) : 'Technology';
+  return first ? titleCase(first) : '';
 }
 
 function companyLocation(company: ApprovedCompany | null): string {
-  if (!company) return 'San Francisco, CA';
+  if (!company) return '';
 
   const primaryParts = [company.primaryLocation?.city, company.primaryLocation?.stateOrRegion, company.primaryLocation?.country]
     .map(text)
@@ -57,12 +57,12 @@ function companyLocation(company: ApprovedCompany | null): string {
     .filter(Boolean);
   if (additionalParts.length > 0) return additionalParts.slice(0, 2).join(', ');
 
-  return 'San Francisco, CA';
+  return '';
 }
 
 function companyDomain(company: ApprovedCompany | null): string {
   const raw = text(company?.domain || company?.website);
-  if (!raw) return 'designhubinc.com';
+  if (!raw) return '';
   return raw.replace(/^https?:\/\//i, '').replace(/^www\./i, '');
 }
 
@@ -91,11 +91,11 @@ function employmentTypeLabel(value?: string): string {
   if (normalized === 'PART_TIME') return 'Part-time';
   if (normalized === 'CONTRACT') return 'Contract';
   if (normalized === 'CASUAL') return 'Casual';
-  return 'Full-time';
+  return '';
 }
 
 function departmentLabel(job: PublicJob): string {
-  return text(job.department) || 'General';
+  return text(job.department);
 }
 
 type DepartmentCount = {
@@ -154,22 +154,20 @@ export default function CompanyDetailPage() {
 
   const about = useMemo(() => {
     const fromData = cleanText(company?.about || company?.overview || '');
-    if (fromData) return fromData;
-    return 'DesignHub Inc. is a pioneer in cloud-native infrastructure, dedicated to simplifying complex deployment pipelines for modern engineering teams. Founded on the belief that developers should spend more time building and less time managing servers, we\'ve created a suite of tools that automate the hardest parts of DevOps. Our mission is to democratize scalable architecture and empower teams to move faster with confidence.';
+    return fromData;
   }, [company]);
 
   const aboutParagraphs = useMemo(() => toParagraphs(about), [about]);
 
-  const companyName = company?.name || 'DesignHub Inc.';
+  const companyName = company?.name || '';
   const industry = companyIndustry(company);
   const headquarters = companyLocation(company);
   const domain = companyDomain(company);
-  const linkedin = socialLinkDisplay(company?.social?.linkedin) || `linkedin.com/company/${companyName.toLowerCase().replace(/\s+/g, '')}`;
+  const linkedin = socialLinkDisplay(company?.social?.linkedin);
 
   const coverImage =
     company?.bannerUrl ||
-    (Array.isArray(company?.images) && company.images.length > 0 ? company.images[0] : null) ||
-    'https://images.unsplash.com/photo-1518773553398-650c184e0bb3?q=80&w=1800&auto=format&fit=crop';
+    (Array.isArray(company?.images) && company.images.length > 0 ? company.images[0] : null);
 
   const filteredJobs = useMemo(() => {
     const query = searchTerm.trim().toLowerCase();
@@ -206,19 +204,32 @@ export default function CompanyDetailPage() {
       .sort((a, b) => b.count - a.count)
       .slice(0, 3);
 
-    if (computed.length > 0) return computed;
-
-    return [
-      { name: 'Engineering', count: 8 },
-      { name: 'Design', count: 3 },
-      { name: 'Product', count: 4 },
-    ];
+    return computed;
   }, [jobs]);
 
-  const benefits = ['Remote-first', 'Health insurance', '401k matching', 'Unlimited PTO', 'Wellness stipend'];
+  const benefits = useMemo(() => {
+    const companyBenefits = Array.isArray(company?.benefits) ? company.benefits : [];
+    const jobBenefits = jobs
+      .flatMap((job) => {
+        const raw = job.benefits;
+        if (!raw) return [];
+        if (Array.isArray(raw)) return raw.map((item) => text(item));
+        return text(String(raw))
+          .split(/[,\n]/)
+          .map((item) => item.trim())
+          .filter(Boolean);
+      })
+      .filter(Boolean);
 
-  const founded = company?.yearFounded || 2015;
-  const companySize = titleCase(company?.companySize) || '200-500';
+    return Array.from(new Set([...companyBenefits, ...jobBenefits])).slice(0, 10);
+  }, [company?.benefits, jobs]);
+
+  const cultureHighlights = useMemo(() => {
+    return Array.isArray(company?.cultureHighlights) ? company.cultureHighlights.filter((item) => text(item)) : [];
+  }, [company?.cultureHighlights]);
+
+  const founded = company?.yearFounded || null;
+  const companySize = titleCase(company?.companySize) || null;
   const initials = companyName.slice(0, 1).toUpperCase() || 'D';
 
   if (isLoading) {
@@ -251,25 +262,25 @@ export default function CompanyDetailPage() {
   return (
     <div className="min-h-screen bg-[#fafafa] font-['Poppins',sans-serif] text-[#474747]">
       <header className="border-b border-[#e8e8e8] bg-white">
-        <div className="mx-auto flex h-24 w-full max-w-[1276px] items-end justify-between">
+        <div className="mx-auto flex h-[72px] w-full max-w-[1276px] items-center justify-between">
           <img src={logoDark} alt="HRM8" className="h-[28px] w-auto" />
 
-          <nav className="flex items-center gap-16 text-[16px]">
-            <Link to="/jobs" className="flex h-[64px] items-center gap-2 px-4 pb-[15px] pt-4 text-[#656565]">
+          <nav className="flex h-full items-center gap-12 text-[16px]">
+            <Link to="/jobs" className="inline-flex h-full items-center gap-2 px-4 text-[#656565]">
               <Briefcase className="h-5 w-5" />
               Find jobs
             </Link>
-            <Link to="/careers" className="flex h-[64px] items-center gap-2 border-b border-[#5b67f3] px-4 pb-[15px] pt-4 text-[#5b67f3]">
+            <Link to="/careers" className="inline-flex h-full items-center gap-2 border-b border-[#5b67f3] px-4 text-[#5b67f3]">
               <Building2 className="h-5 w-5" />
               Companies
             </Link>
-            <button type="button" className="flex h-[64px] items-center gap-2 px-4 pb-[15px] pt-4 text-[#656565]">
+            <button type="button" className="inline-flex h-full items-center gap-2 px-4 text-[#656565]">
               <CircleDollarSign className="h-5 w-5" />
               Salaries
             </button>
           </nav>
 
-          <div className="flex items-center gap-6 pb-7">
+          <div className="flex items-center gap-6">
             <div className="h-9 w-9 overflow-hidden rounded-full border border-black/10 bg-[#e0e0e0]">
               <div className="flex h-full w-full items-center justify-center text-[12px] font-medium text-[#474747]">
                 {candidate?.firstName?.[0]?.toUpperCase() || 'U'}
@@ -280,66 +291,84 @@ export default function CompanyDetailPage() {
         </div>
       </header>
 
-      <main className="mx-auto w-full max-w-[1276px] pb-16">
-        <div className="flex h-[56px] items-center gap-3 text-[12px] leading-[16px] text-[#959595]">
-          <button type="button" onClick={() => navigate('/careers')} className="inline-flex items-center gap-2">
-            <ArrowLeft className="h-4 w-4" />
-            Back to Companies
-          </button>
-          <span className="text-[#d0d5dd]">|</span>
-          <span>Companies</span>
-          <ChevronRight className="h-3 w-3" />
-          <span>{industry}</span>
-          <ChevronRight className="h-3 w-3" />
-          <span className="text-[#191919]">{companyName}</span>
+      <main className="w-full pb-16">
+        <div className="mx-auto w-full max-w-[1276px]">
+          <div className="flex h-[56px] items-center gap-3 px-2 text-[12px] leading-[16px] text-[#959595]">
+            <button type="button" onClick={() => navigate('/careers')} className="inline-flex items-center gap-2">
+              <ArrowLeft className="h-4 w-4" />
+              Back to Companies
+            </button>
+            <span className="text-[#d0d5dd]">|</span>
+            <span>Companies</span>
+            {industry ? (
+              <>
+                <ChevronRight className="h-3 w-3" />
+                <span>{industry}</span>
+              </>
+            ) : null}
+            <ChevronRight className="h-3 w-3" />
+            <span className="text-[#191919]">{companyName}</span>
+          </div>
         </div>
 
-        <section className="relative">
-          <div className="h-[350px] overflow-hidden">
+        <section className="h-[280px] w-full overflow-hidden border-y border-[#e8e8e8] bg-[#111827]">
+          {coverImage ? (
             <img src={coverImage} alt={`${companyName} banner`} className="h-full w-full object-cover" />
-          </div>
+          ) : (
+            <div className="h-full w-full bg-[#1f2937]" />
+          )}
+        </section>
 
-          <div className="relative border border-t-0 border-[#e8e8e8] bg-white px-8 pb-6 pt-4">
-            <div className="absolute -top-[37px] left-8 flex h-[139px] w-[139px] items-center justify-center rounded-[30px] border-[2.5px] border-[#e8e8e8] bg-[#ffeeee]">
+        <section className="mx-auto -mt-8 w-full max-w-[1276px] px-2">
+          <div className="relative border border-[#e8e8e8] bg-white px-6 pb-5 pt-5">
+            <div className="absolute -top-9 left-6 flex h-[86px] w-[86px] items-center justify-center rounded-[18px] border-[2px] border-[#e8e8e8] bg-[#ffeeee]">
               {company.logoUrl ? (
-                <img src={company.logoUrl} alt={companyName} className="h-[79px] w-[79px] rounded-[16px] object-cover" />
+                <img src={company.logoUrl} alt={companyName} className="h-[54px] w-[54px] rounded-[10px] object-cover" />
               ) : (
-                <span className="text-[40px] font-semibold text-[#ef6b6b]">{initials}</span>
+                <span className="text-[28px] font-semibold text-[#ef6b6b]">{initials}</span>
               )}
             </div>
 
-            <div className="flex flex-col items-center text-center">
-              <h1 className="text-[32px] font-medium leading-[44px] text-[#191919]">{companyName}</h1>
-              <p className="mt-1 text-[16px] leading-[26px] text-[#656565]">
-                {aboutParagraphs[0] || 'Building the next generation of cloud infrastructure and AI-driven automation tools.'}
-              </p>
-              <div className="mt-3 flex flex-wrap items-center justify-center gap-3">
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#eff8ff] px-2 py-[2px] text-[12px] font-medium leading-[18px] text-[#175cd3]">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Verified Employer
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#ecfdf3] px-2 py-[2px] text-[12px] font-medium leading-[18px] text-[#027a48]">
-                  <CheckCircle2 className="h-3 w-3" />
-                  Actively Hiring
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-[#f2f4f7] px-2 py-[2px] text-[12px] font-medium leading-[18px] text-[#344054]">
-                  <Globe className="h-3 w-3" />
-                  {industry}
-                </span>
+            <div className="pl-[104px]">
+              <h1 className="text-[34px] font-medium leading-[44px] text-[#191919]">{companyName}</h1>
+              {aboutParagraphs[0] ? <p className="mt-1 text-[14px] leading-[24px] text-[#656565]">{aboutParagraphs[0]}</p> : null}
+              <div className="mt-2 flex flex-wrap items-center gap-3">
+                {company.verificationStatus === 'VERIFIED' ? (
+                  <span className="inline-flex items-center gap-1 text-[12px] font-medium leading-[18px] text-[#175cd3]">
+                    <CheckCircle2 className="h-3 w-3" />
+                    Verified Employer
+                  </span>
+                ) : null}
+                {company.jobCount > 0 ? (
+                  <span className="inline-flex items-center gap-1 text-[12px] font-medium leading-[18px] text-[#12b76a]">
+                    <span className="h-2 w-2 rounded-full bg-[#12b76a]" />
+                    Actively Hiring
+                  </span>
+                ) : null}
+                {industry ? (
+                  <span className="inline-flex items-center gap-1 text-[12px] font-medium leading-[18px] text-[#667085]">
+                    <Globe className="h-3 w-3" />
+                    {industry}
+                  </span>
+                ) : null}
               </div>
             </div>
           </div>
         </section>
 
-        <section className="mt-6 grid grid-cols-1 gap-4 xl:grid-cols-[minmax(0,744px)_minmax(0,516px)]">
+        <section className="mx-auto mt-6 grid w-full max-w-[1276px] grid-cols-1 gap-4 px-2 xl:grid-cols-[minmax(0,744px)_minmax(0,516px)]">
           <div className="space-y-4">
             <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
               <h2 className="text-[32px] font-medium leading-[44px] text-[#191919]">About {companyName}</h2>
-              <div className="mt-4 space-y-4 text-[14px] leading-[24px] text-[#656565]">
-                {aboutParagraphs.map((paragraph, index) => (
-                  <p key={`about-${index}`}>{paragraph}</p>
-                ))}
-              </div>
+              {aboutParagraphs.length > 0 ? (
+                <div className="mt-4 space-y-4 text-[14px] leading-[24px] text-[#656565]">
+                  {aboutParagraphs.map((paragraph, index) => (
+                    <p key={`about-${index}`}>{paragraph}</p>
+                  ))}
+                </div>
+              ) : (
+                <p className="mt-4 text-[14px] leading-[24px] text-[#959595]">No company overview available.</p>
+              )}
             </article>
 
             <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
@@ -347,73 +376,53 @@ export default function CompanyDetailPage() {
                 <div className="rounded-[12px] border border-[#e8e8e8] bg-[#fafafa] px-3 py-4 text-center">
                   <Calendar className="mx-auto h-4 w-4 text-[#5b67f3]" />
                   <p className="mt-2 text-[12px] leading-[16px] text-[#959595]">Founded</p>
-                  <p className="mt-1 text-[18px] font-medium leading-[28px] text-[#474747]">{founded}</p>
+                  <p className="mt-1 text-[18px] font-medium leading-[28px] text-[#474747]">{founded ?? '—'}</p>
                 </div>
                 <div className="rounded-[12px] border border-[#e8e8e8] bg-[#fafafa] px-3 py-4 text-center">
                   <Users2 className="mx-auto h-4 w-4 text-[#5b67f3]" />
                   <p className="mt-2 text-[12px] leading-[16px] text-[#959595]">Company Size</p>
-                  <p className="mt-1 text-[18px] font-medium leading-[28px] text-[#474747]">{companySize}</p>
+                  <p className="mt-1 text-[18px] font-medium leading-[28px] text-[#474747]">{companySize || '—'}</p>
                 </div>
                 <div className="rounded-[12px] border border-[#e8e8e8] bg-[#fafafa] px-3 py-4 text-center">
                   <MapPin className="mx-auto h-4 w-4 text-[#5b67f3]" />
                   <p className="mt-2 text-[12px] leading-[16px] text-[#959595]">Headquarters</p>
-                  <p className="mt-1 text-[18px] font-medium leading-[28px] text-[#474747]">{headquarters}</p>
+                  <p className="mt-1 text-[18px] font-medium leading-[28px] text-[#474747]">{headquarters || '—'}</p>
                 </div>
                 <div className="rounded-[12px] border border-[#e8e8e8] bg-[#fafafa] px-3 py-4 text-center">
                   <Building2 className="mx-auto h-4 w-4 text-[#5b67f3]" />
                   <p className="mt-2 text-[12px] leading-[16px] text-[#959595]">Industry</p>
-                  <p className="mt-1 text-[18px] font-medium leading-[28px] text-[#474747]">{industry}</p>
+                  <p className="mt-1 text-[18px] font-medium leading-[28px] text-[#474747]">{industry || '—'}</p>
                 </div>
               </div>
             </article>
 
-            <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
-              <h2 className="text-[32px] font-medium leading-[44px] text-[#191919]">Our Culture</h2>
-              <div className="mt-4 grid gap-4 md:grid-cols-[1fr_180px]">
-                <div className="space-y-4">
-                  <div>
-                    <p className="inline-flex items-center gap-2 text-[16px] font-medium leading-[26px] text-[#474747]">
-                      <CheckCircle2 className="h-4 w-4 text-[#5b67f3]" />
-                      Remote-First Flexibility
-                    </p>
-                    <p className="mt-1 text-[14px] leading-[24px] text-[#656565]">
-                      Work from anywhere. We care about output, not hours spent at a desk.
-                    </p>
+            {cultureHighlights.length > 0 || (company.images && company.images.length > 0) ? (
+              <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
+                <h2 className="text-[32px] font-medium leading-[44px] text-[#191919]">Our Culture</h2>
+                <div className="mt-4 grid gap-4 md:grid-cols-[1fr_180px]">
+                  <div className="space-y-3">
+                    {cultureHighlights.length > 0 ? (
+                      cultureHighlights.slice(0, 4).map((item, index) => (
+                        <p key={`${item}-${index}`} className="inline-flex items-center gap-2 text-[16px] leading-[26px] text-[#474747]">
+                          <CheckCircle2 className="h-4 w-4 text-[#5b67f3]" />
+                          {item}
+                        </p>
+                      ))
+                    ) : (
+                      <p className="text-[14px] leading-[24px] text-[#959595]">No culture highlights available.</p>
+                    )}
                   </div>
-                  <div>
-                    <p className="inline-flex items-center gap-2 text-[16px] font-medium leading-[26px] text-[#474747]">
-                      <CheckCircle2 className="h-4 w-4 text-[#5b67f3]" />
-                      Continuous Learning
-                    </p>
-                    <p className="mt-1 text-[14px] leading-[24px] text-[#656565]">
-                      Generous stipends for courses, conferences, and books.
-                    </p>
-                  </div>
-                  <div>
-                    <p className="inline-flex items-center gap-2 text-[16px] font-medium leading-[26px] text-[#474747]">
-                      <CheckCircle2 className="h-4 w-4 text-[#5b67f3]" />
-                      Inclusive Environment
-                    </p>
-                    <p className="mt-1 text-[14px] leading-[24px] text-[#656565]">
-                      We actively foster a diverse team and celebrate different perspectives.
-                    </p>
-                  </div>
-                </div>
 
-                <div className="space-y-3">
-                  <img
-                    src={(company.images && company.images[0]) || 'https://images.unsplash.com/photo-1521737604893-d14cc237f11d?q=80&w=640&auto=format&fit=crop'}
-                    alt="Culture 1"
-                    className="h-[95px] w-full rounded-[8px] object-cover"
-                  />
-                  <img
-                    src={(company.images && company.images[1]) || 'https://images.unsplash.com/photo-1517048676732-d65bc937f952?q=80&w=640&auto=format&fit=crop'}
-                    alt="Culture 2"
-                    className="h-[95px] w-full rounded-[8px] object-cover"
-                  />
+                  {company.images && company.images.length > 0 ? (
+                    <div className="space-y-3">
+                      {company.images.slice(0, 2).map((image, index) => (
+                        <img key={`${image}-${index}`} src={image} alt={`${companyName} culture ${index + 1}`} className="h-[95px] w-full rounded-[8px] object-cover" />
+                      ))}
+                    </div>
+                  ) : null}
                 </div>
-              </div>
-            </article>
+              </article>
+            ) : null}
 
             <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
               <h2 className="text-[32px] font-medium leading-[44px] text-[#191919]">Open Positions</h2>
@@ -476,15 +485,19 @@ export default function CompanyDetailPage() {
                         <div className="min-w-0">
                           <p className="truncate text-[18px] font-medium leading-[28px] text-[#191919]">{job.title}</p>
                           <div className="mt-1 flex flex-wrap items-center gap-3 text-[14px] leading-[24px] text-[#474747]">
-                            <span className="inline-flex items-center gap-1">
-                              <Briefcase className="h-3.5 w-3.5" />
-                              {departmentLabel(job)}
-                            </span>
+                            {departmentLabel(job) ? (
+                              <span className="inline-flex items-center gap-1">
+                                <Briefcase className="h-3.5 w-3.5" />
+                                {departmentLabel(job)}
+                              </span>
+                            ) : null}
                             <span className="inline-flex items-center gap-1">
                               <MapPin className="h-3.5 w-3.5" />
-                              {text(job.location) || 'Remote'}
+                              {text(job.location) || '—'}
                             </span>
-                            <span>{employmentTypeLabel(job.employmentType || job.employment_type)}</span>
+                            {employmentTypeLabel(job.employmentType || job.employment_type) ? (
+                              <span>{employmentTypeLabel(job.employmentType || job.employment_type)}</span>
+                            ) : null}
                           </div>
                         </div>
                         <button
@@ -515,18 +528,24 @@ export default function CompanyDetailPage() {
             <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
               <h3 className="text-[24px] font-medium leading-[36px] text-[#191919]">Quick Info</h3>
               <div className="mt-3 space-y-3 text-[12px] leading-[16px] text-[#656565]">
-                <p className="inline-flex items-center gap-2">
-                  <Globe className="h-3.5 w-3.5" />
-                  {domain}
-                </p>
-                <p className="inline-flex items-center gap-2">
-                  <CheckCircle2 className="h-3.5 w-3.5 text-[#94969c]" />
-                  {linkedin}
-                </p>
-                <p className="inline-flex items-center gap-2">
-                  <MapPin className="h-3.5 w-3.5" />
-                  {headquarters}
-                </p>
+                {domain ? (
+                  <p className="inline-flex items-center gap-2">
+                    <Globe className="h-3.5 w-3.5" />
+                    {domain}
+                  </p>
+                ) : null}
+                {linkedin ? (
+                  <p className="inline-flex items-center gap-2">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-[#94969c]" />
+                    {linkedin}
+                  </p>
+                ) : null}
+                {headquarters ? (
+                  <p className="inline-flex items-center gap-2">
+                    <MapPin className="h-3.5 w-3.5" />
+                    {headquarters}
+                  </p>
+                ) : null}
               </div>
 
               <div className="my-4 h-px w-full bg-[#e8e8e8]" />
@@ -537,10 +556,13 @@ export default function CompanyDetailPage() {
                   safeOpenExternal(
                     company.website
                       ? `https://${company.website.replace(/^https?:\/\//, '')}`
-                      : `https://${domain}`
+                      : domain
+                        ? `https://${domain}`
+                        : ''
                   )
                 }
                 className="h-8 w-full rounded-[8px] border border-[#5b67f3] text-[12px] font-semibold leading-[16px] text-[#5b67f3]"
+                disabled={!company.website && !domain}
               >
                 View Website
               </button>
@@ -551,12 +573,16 @@ export default function CompanyDetailPage() {
               <p className="mt-1 text-[14px] leading-[24px] text-[#656565]">Currently hiring for:</p>
 
               <div className="mt-3 space-y-2">
-                {hiringSnapshot.map((entry) => (
-                  <div key={entry.name} className="flex items-center justify-between rounded-[8px] border border-[#e8e8e8] px-3 py-2">
-                    <p className="text-[12px] leading-[16px] text-[#474747]">{entry.name}</p>
-                    <span className="text-[10px] leading-[14px] text-[#656565]">{entry.count} roles</span>
-                  </div>
-                ))}
+                {hiringSnapshot.length > 0 ? (
+                  hiringSnapshot.map((entry) => (
+                    <div key={entry.name} className="flex items-center justify-between rounded-[8px] border border-[#e8e8e8] px-3 py-2">
+                      <p className="text-[12px] leading-[16px] text-[#474747]">{entry.name}</p>
+                      <span className="text-[10px] leading-[14px] text-[#656565]">{entry.count} roles</span>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-[14px] leading-[24px] text-[#959595]">No active roles available.</p>
+                )}
               </div>
 
               <button
@@ -569,19 +595,21 @@ export default function CompanyDetailPage() {
               </button>
             </article>
 
-            <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
-              <h3 className="text-[24px] font-medium leading-[36px] text-[#191919]">Benefits &amp; Perks</h3>
-              <div className="mt-3 flex flex-wrap gap-2">
-                {benefits.map((item) => (
-                  <span
-                    key={item}
-                    className="inline-flex rounded-full border border-[#e9eaeb] bg-[#fafafa] px-2 py-[2px] text-[12px] font-medium leading-[18px] text-[#414651]"
-                  >
-                    {item}
-                  </span>
-                ))}
-              </div>
-            </article>
+            {benefits.length > 0 ? (
+              <article className="rounded-[12px] border border-[#e8e8e8] bg-white p-5">
+                <h3 className="text-[24px] font-medium leading-[36px] text-[#191919]">Benefits &amp; Perks</h3>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  {benefits.map((item) => (
+                    <span
+                      key={item}
+                      className="inline-flex rounded-full border border-[#e9eaeb] bg-[#fafafa] px-2 py-[2px] text-[12px] font-medium leading-[18px] text-[#414651]"
+                    >
+                      {item}
+                    </span>
+                  ))}
+                </div>
+              </article>
+            ) : null}
           </aside>
         </section>
       </main>
