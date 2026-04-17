@@ -1,947 +1,625 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Link } from 'react-router-dom';
-import type { LucideIcon } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
 import {
-  ArrowRight,
-  BadgeCheck,
+  Bell,
   Briefcase,
   Building2,
-  ExternalLink,
-  Facebook,
-  Globe,
-  Image as ImageIcon,
-  Instagram,
-  Linkedin,
+  ChevronDown,
+  ChevronLeft,
+  ChevronRight,
+  ClipboardList,
+  Dot,
+  MapPin,
   Search,
-  Sparkles,
-  Twitter,
-  Users,
 } from 'lucide-react';
 
-import { CandidatePageLayout } from '@/shared/components/layouts/CandidatePageLayout';
-import { PublicCandidatePageLayout } from '@/shared/components/layouts/PublicCandidatePageLayout';
+import logoDark from '@/assets/logo-dark.png';
 import { useCandidateAuth } from '@/contexts/CandidateAuthContext';
-import { Badge, badgeVariants, type BadgeProps } from '@/shared/components/ui/badge';
-import { Button } from '@/shared/components/ui/button';
-import { Input } from '@/shared/components/ui/input';
-import { Skeleton } from '@/shared/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/shared/components/ui/select';
-import { cn } from '@/shared/lib/utils';
-import { safeOpenExternal } from '@/shared/lib/safeExternalLink';
 import { jobService, type ApprovedCompany } from '@/shared/services/jobService';
 
-type SortOption = 'recommended' | 'mostJobs' | 'aToZ';
-type CompanyFilter = 'all' | 'hiring' | 'verified' | 'story';
-type SocialPlatform = 'linkedin' | 'twitter' | 'facebook' | 'instagram';
-type SurfaceTone = 'brand' | 'success' | 'warning' | 'neutral' | 'coral';
-type BadgeVariant = NonNullable<BadgeProps['variant']>;
+const PAGE_SIZE = 6;
 
-type SocialLinkEntry = {
-  id: SocialPlatform;
-  label: string;
-  href: string;
-  icon: LucideIcon;
-  domain: string;
-  tone: SurfaceTone;
-  badgeVariant: BadgeVariant;
-};
+type SortValue = 'relevance' | 'jobs' | 'az';
 
-const SOCIAL_CONFIG: Record<
-  SocialPlatform,
-  {
-    label: string;
-    icon: LucideIcon;
-    domain: string;
-    tone: SurfaceTone;
-    badgeVariant: BadgeVariant;
-  }
-> = {
-  linkedin: {
-    label: 'LinkedIn',
-    icon: Linkedin,
-    domain: 'linkedin.com',
-    tone: 'brand',
-    badgeVariant: 'purple-soft',
-  },
-  twitter: {
-    label: 'X / Twitter',
-    icon: Twitter,
-    domain: 'x.com',
-    tone: 'neutral',
-    badgeVariant: 'neutral',
-  },
-  facebook: {
-    label: 'Facebook',
-    icon: Facebook,
-    domain: 'facebook.com',
-    tone: 'brand',
-    badgeVariant: 'purple-soft',
-  },
-  instagram: {
-    label: 'Instagram',
-    icon: Instagram,
-    domain: 'instagram.com',
-    tone: 'warning',
-    badgeVariant: 'orange-soft',
-  },
-};
+type LocationValue = 'Remote' | string;
 
-const formatCount = (value: number) => new Intl.NumberFormat('en-US').format(value);
+type CompanyStageValue = 'actively_hiring' | 'featured';
 
-function normalizeDomain(value?: string | null) {
-  if (!value) return '';
-  return value
-    .replace(/^https?:\/\//i, '')
-    .replace(/^www\./i, '')
-    .replace(/\/.*$/, '')
-    .trim()
-    .toLowerCase();
+function text(input?: string | null): string {
+  return String(input || '').trim();
 }
 
-function getWebsiteUrl(value?: string | null) {
-  if (!value) return null;
-  return value.startsWith('http') ? value : `https://${value}`;
+function compact(input: string, max = 86): string {
+  if (input.length <= max) return input;
+  return `${input.slice(0, max).trim()}...`;
 }
 
-function getFaviconUrl(domain?: string | null) {
-  const normalized = normalizeDomain(domain);
-  if (!normalized) return null;
-  return `https://www.google.com/s2/favicons?sz=128&domain=${encodeURIComponent(normalized)}`;
-}
-
-function extractText(value: string | null | undefined) {
-  return String(value || '')
+function extractSummary(company: ApprovedCompany): string {
+  const base = text(company.about || company.overview)
     .replace(/<[^>]+>/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+
+  return base ? compact(base, 86) : '';
 }
 
-function truncateText(value: string, maxLength: number) {
-  if (value.length <= maxLength) return value;
-  return `${value.slice(0, maxLength).trim()}...`;
-}
-
-function formatReadableValue(value?: string | null) {
-  if (!value) return null;
-  const trimmed = value.trim();
-  if (!trimmed) return null;
-  if (/[0-9]-[0-9]/.test(trimmed)) return trimmed;
-  return trimmed
+function titleCase(input?: string | null): string {
+  const value = text(input);
+  if (!value) return '';
+  return value
     .replace(/_/g, ' ')
     .toLowerCase()
-    .replace(/\b\w/g, (character) => character.toUpperCase());
+    .replace(/\b\w/g, (c) => c.toUpperCase());
 }
 
-function formatProfileLocation(
-  location?:
-    | {
-        name?: string;
-        city?: string;
-        stateOrRegion?: string;
-        country?: string;
-      }
-    | null
-) {
-  if (!location) return null;
-
-  const parts = [location.name, location.city, location.stateOrRegion, location.country]
-    .map((part) => String(part || '').trim())
-    .filter(Boolean);
-
-  return parts.length > 0 ? Array.from(new Set(parts)).join(', ') : null;
+function companyIndustry(company: ApprovedCompany): string {
+  const first = (company.industries || []).find((item) => text(item));
+  return first ? titleCase(first) : '';
 }
 
-function uniqueValues(values: Array<string | null | undefined>) {
-  return Array.from(new Set(values.map((item) => String(item || '').trim()).filter(Boolean)));
-}
-
-function getSocialEntries(company: ApprovedCompany) {
-  const social = company.social || {};
-  return (Object.keys(SOCIAL_CONFIG) as SocialPlatform[])
-    .map((key) => {
-      const href = social[key];
-      if (!href) return null;
-      const config = SOCIAL_CONFIG[key];
-      return {
-        id: key,
-        label: config.label,
-        href,
-        icon: config.icon,
-        domain: config.domain,
-        tone: config.tone,
-        badgeVariant: config.badgeVariant,
-      };
-    })
-    .filter((entry): entry is SocialLinkEntry => Boolean(entry));
-}
-
-function getCompanyLocations(company: ApprovedCompany) {
-  return uniqueValues([
-    formatProfileLocation(company.primaryLocation),
-    ...(company.additionalLocations || []).map((location) => formatProfileLocation(location)),
-  ]);
-}
-
-function getPrimaryIndustry(company: ApprovedCompany) {
-  return uniqueValues((company.industries || []).map((industry) => String(industry || '').trim()))[0] || null;
-}
-
-function getCompanySummary(company: ApprovedCompany) {
-  const summary = extractText(company.about || company.overview);
-  if (summary) return truncateText(summary, 220);
-
-  if (company.jobCount > 0) {
-    return `Explore ${formatCount(company.jobCount)} live role${company.jobCount === 1 ? '' : 's'} from ${company.name} and review official company channels before you apply.`;
+function companyLocation(company: ApprovedCompany): string {
+  const primary = company.primaryLocation;
+  const parts = [primary?.city, primary?.stateOrRegion, primary?.country].map(text).filter(Boolean);
+  if (parts.length > 0) {
+    const value = parts.join(', ');
+    if (/remote/i.test(value)) return value;
+    return value;
   }
-
-  return `Review this employer's official profile, public channels, and hiring footprint in one place.`;
+  return '';
 }
 
-function getDiscoveryScore(company: ApprovedCompany) {
-  let score = company.jobCount * 12;
-  if (company.verificationStatus === 'VERIFIED') score += 42;
-  if (extractText(company.about || company.overview)) score += 26;
-  if (company.logoUrl) score += 10;
-  if (company.bannerUrl || company.images?.length) score += 10;
-  const socialCount = getSocialEntries(company).length;
-  if (socialCount > 0) score += Math.min(socialCount * 4, 16);
-  if (getPrimaryIndustry(company)) score += 8;
-  if (getCompanyLocations(company).length > 0) score += 8;
-  if (formatReadableValue(company.companySize)) score += 4;
-  return score;
+function normalizeCompanySize(company: ApprovedCompany): '0-50 employees' | '51-200 employees' | '201-1000 employees' | '1000+ employees' | '' {
+  const size = text(company.companySize).toLowerCase();
+  if (!size) return '';
+
+  const numbers = size.match(/\d+/g)?.map((v) => Number(v)) || [];
+  const min = numbers[0] || 0;
+  const max = numbers[1] || numbers[0] || 0;
+
+  if (size.includes('+') || min >= 1000) return '1000+ employees';
+  if ((min >= 201 && min <= 1000) || (max >= 201 && max <= 1000)) return '201-1000 employees';
+  if ((min >= 51 && min <= 200) || (max >= 51 && max <= 200)) return '51-200 employees';
+  return '0-50 employees';
 }
 
-function getFilterLabel(filter: CompanyFilter) {
-  switch (filter) {
-    case 'hiring':
-      return 'Hiring now';
-    case 'verified':
-      return 'Verified employers';
-    case 'story':
-      return 'With company story';
-    case 'all':
-    default:
-      return 'All employers';
-  }
+function isRemoteLocation(location: string): boolean {
+  return /remote/i.test(location);
 }
 
-function iconToneClasses(tone: SurfaceTone, active = false) {
-  switch (tone) {
-    case 'brand':
-      return active ? 'border-primary/25 bg-primary/12 text-primary' : 'border-primary/20 bg-primary/10 text-primary';
-    case 'success':
-      return active ? 'border-teal/25 bg-teal/12 text-teal' : 'border-teal/20 bg-teal/10 text-teal';
-    case 'warning':
-      return active ? 'border-orange/25 bg-orange/12 text-orange' : 'border-orange/20 bg-orange/10 text-orange';
-    case 'coral':
-      return active ? 'border-coral/25 bg-coral/12 text-coral' : 'border-coral/20 bg-coral/10 text-coral';
-    case 'neutral':
-    default:
-      return active ? 'border-slate-300 bg-slate-100 text-slate-700' : 'border-slate-200 bg-slate-50 text-slate-600';
-  }
+function isFeatured(company: ApprovedCompany): boolean {
+  return company.verificationStatus === 'VERIFIED' && company.jobCount >= 5;
 }
 
-function SectionIconChip({
-  icon: Icon,
-  tone,
-  active = false,
-  compact = false,
-  className,
-}: {
-  icon: LucideIcon;
-  tone: SurfaceTone;
-  active?: boolean;
-  compact?: boolean;
-  className?: string;
-}) {
-  return (
-    <span
-      className={cn(
-        compact ? 'inline-flex h-6 w-6 shrink-0 items-center justify-center rounded-lg border' : 'inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl border',
-        iconToneClasses(tone, active),
-        className
-      )}
-    >
-      <Icon className={compact ? 'h-3.5 w-3.5' : 'h-4.5 w-4.5'} strokeWidth={active ? 2.1 : 1.9} />
-    </span>
-  );
+function score(company: ApprovedCompany, query: string): number {
+  const q = query.toLowerCase();
+  if (!q) return 0;
+
+  const name = company.name.toLowerCase();
+  const industry = companyIndustry(company).toLowerCase();
+  const summary = extractSummary(company).toLowerCase();
+
+  let result = 0;
+  if (name.includes(q)) result += 8;
+  if (industry.includes(q)) result += 4;
+  if (summary.includes(q)) result += 2;
+  return result;
 }
 
-function DomainAvatar({
-  domain,
-  companyName,
-  logoUrl,
-  className = '',
-}: {
-  domain: string;
-  companyName: string;
-  logoUrl?: string | null;
-  className?: string;
-}) {
-  const imageUrl = logoUrl || getFaviconUrl(domain);
-  const [showFallback, setShowFallback] = useState(!imageUrl);
+function buildPageItems(current: number, total: number): Array<number | 'ellipsis'> {
+  if (total <= 7) return Array.from({ length: total }, (_, index) => index + 1);
 
-  useEffect(() => {
-    setShowFallback(!imageUrl);
-  }, [imageUrl]);
+  const items: Array<number | 'ellipsis'> = [1];
+  const start = Math.max(2, current - 1);
+  const end = Math.min(total - 1, current + 1);
+
+  if (start > 2) items.push('ellipsis');
+  for (let page = start; page <= end; page += 1) items.push(page);
+  if (end < total - 1) items.push('ellipsis');
+
+  items.push(total);
+  return items;
+}
+
+function CompanyCard({ company }: { company: ApprovedCompany }) {
+  const navigate = useNavigate();
+
+  const industry = companyIndustry(company);
+  const location = companyLocation(company);
+  const verified = company.verificationStatus === 'VERIFIED';
+  const activeHiring = company.jobCount > 0;
+  const initials = text(company.name).slice(0, 1).toUpperCase() || 'C';
 
   return (
-    <div className={cn('overflow-hidden rounded-[24px] border border-slate-200 bg-white shadow-[0_18px_40px_rgba(15,23,42,0.10)]', className)}>
-      {imageUrl && !showFallback ? (
-        <img
-          src={imageUrl}
-          alt={`${companyName} logo`}
-          className="h-full w-full object-cover"
-          loading="lazy"
-          decoding="async"
-          onError={() => setShowFallback(true)}
-        />
-      ) : (
-        <div className="flex h-full w-full items-center justify-center bg-gradient-primary text-white">
-          <Building2 className="h-8 w-8" />
-        </div>
-      )}
-    </div>
-  );
-}
-
-function BrandLinkPill({
-  label,
-  href,
-  domain,
-  icon: Icon,
-  variant,
-  tone,
-  className,
-}: {
-  label: string;
-  href: string;
-  domain: string;
-  icon: LucideIcon;
-  variant: BadgeVariant;
-  tone: SurfaceTone;
-  className?: string;
-}) {
-  const faviconUrl = getFaviconUrl(domain);
-  const [showFallback, setShowFallback] = useState(!faviconUrl);
-
-  useEffect(() => {
-    setShowFallback(!faviconUrl);
-  }, [faviconUrl]);
-
-  return (
-    <button
-      type="button"
-      onClick={() => safeOpenExternal(href)}
-      className={cn(
-        badgeVariants({ variant }),
-        'inline-flex cursor-pointer items-center gap-2 rounded-full px-3 py-2 text-xs font-semibold shadow-none',
-        className
-      )}
-    >
-      <span className={cn('inline-flex h-5 w-5 items-center justify-center overflow-hidden rounded-full border bg-white', iconToneClasses(tone))}>
-        {faviconUrl && !showFallback ? (
-          <img
-            src={faviconUrl}
-            alt={label}
-            className="h-full w-full object-cover"
-            loading="lazy"
-            onError={() => setShowFallback(true)}
-          />
+    <article className="w-[278px] rounded-[12px] border border-[#e8e8e8] bg-white p-5">
+      <div className="mx-auto flex h-[56px] w-[56px] items-center justify-center rounded-[12px] border border-[#e8e8e8] bg-[#ffecee] text-[18px] font-semibold text-[#ef6b6b]">
+        {company.logoUrl ? (
+          <img src={company.logoUrl} alt={company.name} className="h-full w-full rounded-[12px] object-cover" />
         ) : (
-          <Icon className="h-3.5 w-3.5" />
+          initials
         )}
-      </span>
-      <span>{label}</span>
-    </button>
-  );
-}
-
-function OverviewStat({
-  icon,
-  tone,
-  label,
-  value,
-}: {
-  icon: LucideIcon;
-  tone: SurfaceTone;
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-[20px] border border-slate-200 bg-white/90 p-4">
-      <div className="flex items-center gap-2.5">
-        <SectionIconChip icon={icon} tone={tone} compact />
-        <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">{label}</p>
       </div>
-      <p className="mt-3 text-[1.65rem] font-semibold leading-none tracking-tight text-slate-950">{value}</p>
-    </div>
-  );
-}
 
-function DetailRow({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="flex items-center justify-between gap-3">
-      <span className="text-[11px] font-medium uppercase tracking-[0.16em] text-slate-500">{label}</span>
-      <span className="text-right text-sm font-semibold text-slate-950">{value}</span>
-    </div>
-  );
-}
+      <p className="mt-4 text-center text-[16px] font-medium leading-[26px] text-[#656565]">{company.name}</p>
+      {extractSummary(company) ? <p className="mt-2 text-center text-[14px] leading-[24px] text-[#656565]">{extractSummary(company)}</p> : null}
 
-function CompanyListItem({ company }: { company: ApprovedCompany }) {
-  const domain = normalizeDomain(company.domain || company.website);
-  const websiteUrl = getWebsiteUrl(company.website || domain);
-  const summary = getCompanySummary(company);
-  const socialEntries = getSocialEntries(company);
-  const socialPreview = socialEntries.slice(0, 3);
-  const primaryIndustry = getPrimaryIndustry(company);
-  const companySize = formatReadableValue(company.companySize);
-  const locationList = getCompanyLocations(company);
-  const primaryLocation = locationList[0];
-  const officialChannelCount = socialEntries.length + (websiteUrl ? 1 : 0);
-  const storyExists = Boolean(extractText(company.about || company.overview));
-  const yearFounded = company.yearFounded ? String(company.yearFounded) : null;
-  const heroMedia = company.bannerUrl || company.images?.[0] || null;
-
-  return (
-    <article className="overflow-hidden rounded-[30px] border border-slate-200/80 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.05)] transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_28px_80px_rgba(15,23,42,0.09)]">
-      <div className="grid gap-0 xl:grid-cols-[248px_minmax(0,1fr)]">
-        <div className="relative min-h-[220px] border-b border-slate-200/80 bg-gradient-primary xl:min-h-full xl:border-b-0 xl:border-r xl:border-slate-200/80">
-          {heroMedia ? (
-            <img
-              src={heroMedia}
-              alt={`${company.name} brand banner`}
-              className="h-full w-full object-cover"
-              loading="lazy"
-              decoding="async"
-            />
-          ) : null}
-          <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(8,15,40,0.12)_0%,rgba(8,15,40,0.62)_100%)]" />
-
-          <div className="absolute inset-x-0 bottom-0 p-4">
-            <div className="flex items-end gap-3">
-              <DomainAvatar
-                domain={domain}
-                companyName={company.name}
-                logoUrl={company.logoUrl}
-                className="h-16 w-16 border-[3px] border-white/90"
-              />
-              <div className="min-w-0 pb-1">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-white/70">Official profile</p>
-                <p className="truncate text-sm font-semibold text-white">{domain || 'Employer brand page'}</p>
-              </div>
-            </div>
-          </div>
+      {industry ? (
+        <div className="mt-3 flex justify-center">
+          <span className="inline-flex rounded-full bg-[#eff8ff] px-2 py-[2px] text-[12px] font-medium leading-[18px] text-[#175cd3]">
+            {industry}
+          </span>
         </div>
+      ) : null}
 
-        <div className="grid gap-5 p-5 md:p-6 xl:grid-cols-[minmax(0,1fr)_220px]">
-          <div className="min-w-0 space-y-4">
-            <div className="flex flex-wrap gap-2">
-              {company.verificationStatus === 'VERIFIED' ? (
-                <Badge variant="teal-soft" className="gap-1.5 px-2.5 py-1 text-[10px] font-semibold">
-                  <BadgeCheck className="h-3.5 w-3.5" />
-                  Verified employer
-                </Badge>
-              ) : (
-                <Badge variant="purple-soft" className="px-2.5 py-1 text-[10px] font-semibold">
-                  Official company profile
-                </Badge>
-              )}
-              <Badge variant="teal-soft" className="px-2.5 py-1 text-[10px] font-semibold">
-                {formatCount(company.jobCount)} live role{company.jobCount === 1 ? '' : 's'}
-              </Badge>
-              {storyExists ? (
-                <Badge variant="orange-soft" className="px-2.5 py-1 text-[10px] font-semibold">
-                  Employer story
-                </Badge>
-              ) : null}
-            </div>
-
-            <div className="space-y-2">
-              <Link
-                to={`/companies/${company.id}`}
-                className="inline-flex max-w-full items-center gap-2 text-[1.75rem] font-semibold tracking-tight text-slate-950 transition-colors hover:text-primary"
-              >
-                <span className="truncate">{company.name}</span>
-                <ArrowRight className="h-4 w-4 shrink-0" />
-              </Link>
-
-              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-[13px] text-slate-600">
-                <span className="inline-flex items-center gap-2">
-                  <SectionIconChip icon={Globe} tone="brand" compact />
-                  {domain || 'Official website'}
-                </span>
-                {websiteUrl ? (
-                  <button
-                    type="button"
-                    className="inline-flex items-center gap-1.5 font-medium text-primary transition-colors hover:text-primary/80"
-                    onClick={() => safeOpenExternal(websiteUrl)}
-                  >
-                    Visit official site
-                    <ExternalLink className="h-3.5 w-3.5" />
-                  </button>
-                ) : null}
-              </div>
-
-              <p className="max-w-4xl text-pretty text-[14px] leading-6 text-slate-600">{summary}</p>
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {primaryIndustry ? (
-                <Badge variant="purple-soft" className="px-3 py-1.5 text-xs font-semibold">
-                  {primaryIndustry}
-                </Badge>
-              ) : null}
-              {companySize ? (
-                <Badge variant="neutral" className="px-3 py-1.5 text-xs font-semibold">
-                  {companySize}
-                </Badge>
-              ) : null}
-              {locationList.length > 0 ? (
-                <Badge variant="neutral" className="px-3 py-1.5 text-xs font-semibold">
-                  {locationList.length === 1 ? primaryLocation : `${formatCount(locationList.length)} hiring locations`}
-                </Badge>
-              ) : null}
-            </div>
-
-            <div className="flex flex-wrap gap-2">
-              {socialPreview.map((entry) => (
-                <BrandLinkPill
-                  key={entry.id}
-                  label={entry.label}
-                  href={entry.href}
-                  domain={entry.domain}
-                  icon={entry.icon}
-                  variant={entry.badgeVariant}
-                  tone={entry.tone}
-                  className="px-3 py-1.5"
-                />
-              ))}
-              {websiteUrl ? (
-                <BrandLinkPill
-                  label="Website"
-                  href={websiteUrl}
-                  domain={domain}
-                  icon={Globe}
-                  variant="purple-soft"
-                  tone="brand"
-                  className="px-3 py-1.5"
-                />
-              ) : null}
-            </div>
-          </div>
-
-          <div className="self-start rounded-[24px] border border-slate-200 bg-slate-50/80 p-4">
-            <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">At a glance</p>
-            <div className="mt-3">
-              <p className="text-[2.5rem] font-semibold leading-none tracking-tight text-slate-950">{formatCount(company.jobCount)}</p>
-              <p className="mt-1 text-sm text-slate-600">open role{company.jobCount === 1 ? '' : 's'}</p>
-            </div>
-
-            <div className="mt-4 space-y-3 rounded-[18px] border border-slate-200 bg-white/90 p-3">
-              <DetailRow label="HQ" value={primaryLocation || 'Shared on roles'} />
-              {yearFounded ? <DetailRow label="Founded" value={yearFounded} /> : null}
-              <DetailRow label={yearFounded ? 'Links live' : 'Profile links'} value={`${formatCount(officialChannelCount)} live`} />
-            </div>
-
-            <Button asChild className="mt-4 h-10 w-full rounded-full gap-1.5">
-              <Link to={`/companies/${company.id}`}>
-                View company
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </div>
+      {location ? (
+        <div className="mt-3 flex items-center justify-center gap-2 text-[16px] leading-[26px] text-[#656565]">
+          <MapPin className="h-[18px] w-[18px]" />
+          {location}
         </div>
+      ) : null}
+
+      <div className="my-4 h-px w-full bg-[#e8e8e8]" />
+
+      <div className="space-y-2">
+        {verified ? (
+          <p className="flex items-center justify-center gap-2 text-[14px] leading-[24px] text-[#959595]">
+            <Building2 className="h-5 w-5 text-[#4e61f6]" />
+            Verified employer
+          </p>
+        ) : null}
+
+        {activeHiring ? (
+          <p className="flex items-center justify-center gap-2 text-[14px] leading-[24px] text-[#959595]">
+            <Dot className="h-4 w-4 text-[#00c465]" />
+            Actively hiring
+          </p>
+        ) : null}
+
+        <p className="flex items-center justify-center gap-2 text-[12px] font-medium leading-[16px] text-[#4e61f6]">
+          <ClipboardList className="h-4 w-4" />
+          {company.jobCount} open positions
+        </p>
       </div>
+
+      <button
+        type="button"
+        onClick={() => navigate(`/companies/${company.id}`)}
+        className="mt-4 h-8 w-full rounded-[8px] bg-[#4e61f6] text-[12px] font-semibold leading-[16px] text-white"
+      >
+        View Company
+      </button>
+
+      <button
+        type="button"
+        onClick={() => navigate(`/jobs?search=${encodeURIComponent(company.name)}`)}
+        className="mt-2 inline-flex h-8 w-full items-center justify-center gap-2 rounded-[8px] border-[1.5px] border-[#e8e8e8] text-[12px] font-semibold leading-[16px] text-[#474747]"
+      >
+        See Jobs
+        <ChevronRight className="h-4 w-4" />
+      </button>
     </article>
   );
 }
 
 export default function CareersPage() {
-  const { isAuthenticated } = useCandidateAuth();
-  const Layout = isAuthenticated ? CandidatePageLayout : PublicCandidatePageLayout;
+  const { candidate } = useCandidateAuth();
 
-  const [companies, setCompanies] = useState<ApprovedCompany[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [allCompanies, setAllCompanies] = useState<ApprovedCompany[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  const [searchInput, setSearchInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
-  const [sortBy, setSortBy] = useState<SortOption>('recommended');
-  const [companyFilter, setCompanyFilter] = useState<CompanyFilter>('all');
+  const [sortBy, setSortBy] = useState<SortValue>('relevance');
+  const [currentPage, setCurrentPage] = useState(1);
+
+  const [locationText, setLocationText] = useState('');
+
+  const [selectedIndustries, setSelectedIndustries] = useState<string[]>([]);
+  const [selectedCompanySizes, setSelectedCompanySizes] = useState<string[]>([]);
+  const [selectedLocations, setSelectedLocations] = useState<LocationValue[]>([]);
+  const [selectedCompanyStage, setSelectedCompanyStage] = useState<CompanyStageValue[]>([]);
 
   useEffect(() => {
-    const loadCompanies = async () => {
-      setLoading(true);
+    const load = async () => {
+      setIsLoading(true);
       try {
-        const response = await jobService.getPublicCompanies({ limit: 300 });
+        const response = await jobService.getPublicCompanies({ limit: 200, page: 1, search: searchQuery || undefined });
         if (response.success && response.data?.companies) {
-          setCompanies(response.data.companies);
+          setAllCompanies(response.data.companies);
         } else {
-          setCompanies([]);
+          setAllCompanies([]);
         }
-      } catch (_error) {
-        setCompanies([]);
+      } catch (error) {
+        console.error('Failed to load public companies:', error);
+        setAllCompanies([]);
       } finally {
-        setLoading(false);
+        setIsLoading(false);
       }
     };
 
-    void loadCompanies();
-  }, []);
+    void load();
+  }, [searchQuery]);
 
-  const totalJobs = useMemo(() => companies.reduce((sum, company) => sum + company.jobCount, 0), [companies]);
-  const hiringCompanies = useMemo(() => companies.filter((company) => company.jobCount > 0).length, [companies]);
-  const verifiedCompanies = useMemo(
-    () => companies.filter((company) => company.verificationStatus === 'VERIFIED').length,
-    [companies]
-  );
-  const companiesWithStory = useMemo(
-    () => companies.filter((company) => Boolean(extractText(company.about || company.overview))).length,
-    [companies]
-  );
-  const popularSearches = useMemo(() => {
-    const counts = new Map<string, number>();
-
-    companies.forEach((company) => {
-      const suggestions = [getPrimaryIndustry(company), ...getCompanyLocations(company).slice(0, 1)];
-
-      suggestions.forEach((value) => {
-        if (!value) return;
-        counts.set(value, (counts.get(value) || 0) + 1);
-      });
+  const industryCounts = useMemo(() => {
+    const map = new Map<string, number>();
+    allCompanies.forEach((company) => {
+      const industry = companyIndustry(company);
+      map.set(industry, (map.get(industry) || 0) + 1);
     });
+    const values = Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+    return values;
+  }, [allCompanies]);
 
-    return Array.from(counts.entries())
-      .sort((left, right) => right[1] - left[1])
-      .slice(0, 6)
-      .map(([value]) => value);
-  }, [companies]);
+  const industryOptions = useMemo(() => {
+    return industryCounts.filter(([name]) => Boolean(name));
+  }, [industryCounts]);
+
+  const locationOptions = useMemo(() => {
+    const set = new Set<string>();
+    set.add('Remote');
+    allCompanies.forEach((company) => {
+      const location = companyLocation(company);
+      if (location && !isRemoteLocation(location)) set.add(location);
+    });
+    return Array.from(set).slice(0, 4);
+  }, [allCompanies]);
 
   const filteredCompanies = useMemo(() => {
-    const query = searchQuery.trim().toLowerCase();
+    const base = allCompanies.filter((company) => {
+      const industry = companyIndustry(company);
+      const size = normalizeCompanySize(company);
+      const location = companyLocation(company);
 
-    const filtered = companies.filter((company) => {
-      if (companyFilter === 'hiring' && company.jobCount <= 0) {
-        return false;
+      if (selectedIndustries.length > 0 && !selectedIndustries.includes(industry)) return false;
+      if (selectedCompanySizes.length > 0 && !selectedCompanySizes.includes(size)) return false;
+
+      if (selectedLocations.length > 0) {
+        const locationMatch = selectedLocations.some((selected) => {
+          if (selected === 'Remote') return isRemoteLocation(location) || !text(location);
+          return location.toLowerCase().includes(selected.toLowerCase());
+        });
+        if (!locationMatch) return false;
       }
 
-      if (companyFilter === 'verified' && company.verificationStatus !== 'VERIFIED') {
-        return false;
+      if (selectedCompanyStage.includes('actively_hiring') && company.jobCount <= 0) return false;
+      if (selectedCompanyStage.includes('featured') && !isFeatured(company)) return false;
+
+      if (locationText.trim()) {
+        const hay = `${location} ${company.name}`.toLowerCase();
+        if (!hay.includes(locationText.toLowerCase())) return false;
       }
 
-      if (companyFilter === 'story' && !extractText(company.about || company.overview)) {
-        return false;
-      }
-
-      if (!query) {
-        return true;
-      }
-
-      const searchHaystack = [
-        company.name,
-        company.domain,
-        company.website,
-        extractText(company.about || company.overview),
-        getPrimaryIndustry(company),
-        formatReadableValue(company.companySize),
-        ...getCompanyLocations(company),
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-
-      return searchHaystack.includes(query);
+      return true;
     });
 
-    return filtered.sort((left, right) => {
-      if (sortBy === 'aToZ') {
-        return left.name.localeCompare(right.name);
-      }
+    const enriched = base.map((company) => ({
+      company,
+      relevanceScore: score(company, searchQuery),
+    }));
 
-      if (sortBy === 'mostJobs') {
-        return right.jobCount - left.jobCount;
-      }
-
-      const scoreDelta = getDiscoveryScore(right) - getDiscoveryScore(left);
-      if (scoreDelta !== 0) return scoreDelta;
-      return right.jobCount - left.jobCount;
+    enriched.sort((a, b) => {
+      if (sortBy === 'jobs') return b.company.jobCount - a.company.jobCount;
+      if (sortBy === 'az') return a.company.name.localeCompare(b.company.name);
+      if (b.relevanceScore !== a.relevanceScore) return b.relevanceScore - a.relevanceScore;
+      return b.company.jobCount - a.company.jobCount;
     });
-  }, [companies, companyFilter, searchQuery, sortBy]);
 
-  const hasActiveFilters = Boolean(searchQuery.trim()) || companyFilter !== 'all' || sortBy !== 'recommended';
+    return enriched.map((entry) => entry.company);
+  }, [allCompanies, locationText, searchQuery, selectedCompanySizes, selectedCompanyStage, selectedIndustries, selectedLocations, sortBy]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredCompanies.length / PAGE_SIZE));
+
+  const pagedCompanies = useMemo(() => {
+    const page = Math.min(currentPage, totalPages);
+    const start = (page - 1) * PAGE_SIZE;
+    return filteredCompanies.slice(start, start + PAGE_SIZE);
+  }, [currentPage, filteredCompanies, totalPages]);
+
+  useEffect(() => {
+    if (currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
+
+  const pageItems = useMemo(() => buildPageItems(currentPage, totalPages), [currentPage, totalPages]);
+
+  const toggle = <T extends string>(value: T, setValues: React.Dispatch<React.SetStateAction<T[]>>) => {
+    setValues((prev) => (prev.includes(value) ? prev.filter((item) => item !== value) : [...prev, value]));
+    setCurrentPage(1);
+  };
+
+  const clearAll = () => {
+    setLocationText('');
+    setSelectedIndustries([]);
+    setSelectedCompanySizes([]);
+    setSelectedLocations([]);
+    setSelectedCompanyStage([]);
+    setCurrentPage(1);
+  };
+
+  const companySizeOptions = ['0-50 employees', '51-200 employees', '201-1000 employees', '1000+ employees'];
 
   return (
-    <Layout showSidebarTrigger={false}>
-      <div className="min-h-screen bg-[linear-gradient(180deg,#fcfcff_0%,#f6f8ff_28%,#ffffff_100%)]">
-        <section className="border-b border-slate-200/80">
-          <div className="mx-auto max-w-7xl px-4 py-6 md:py-8">
-            <div className="overflow-hidden rounded-[32px] border border-slate-200/80 bg-white shadow-[0_24px_70px_rgba(15,23,42,0.06)]">
-              <div className="grid gap-0 lg:grid-cols-[minmax(0,1.18fr)_360px]">
-                <div className="relative overflow-hidden px-5 py-6 md:px-8 md:py-8">
-                  <div className="absolute inset-y-0 right-0 w-[38%] bg-[radial-gradient(circle_at_center,hsl(var(--primary)/0.17),transparent_62%)]" />
-                  <div className="relative max-w-3xl space-y-4">
-                    <Badge variant="purple-soft" className="gap-1.5 px-3 py-1 text-[11px] font-semibold">
-                      <Sparkles className="h-3.5 w-3.5" />
-                      Official employer directory
-                    </Badge>
-                    <div className="space-y-3">
-                      <h1 className="max-w-3xl text-balance text-[2.35rem] font-semibold tracking-tight text-slate-950 md:text-[3.4rem]">
-                        Find teams worth applying to before you open the role.
-                      </h1>
-                      <p className="max-w-2xl text-pretty text-[15px] leading-7 text-slate-600 md:text-base">
-                        Search employer profiles, compare live hiring footprints, and validate official company context in one clean browse.
-                      </p>
-                    </div>
-                    <div className="inline-flex flex-wrap items-center gap-2 rounded-full border border-slate-200 bg-slate-50/80 px-3 py-2 text-xs text-slate-600">
-                      <SectionIconChip icon={Search} tone="brand" compact />
-                      Search by employer, industry, or location and jump directly into live openings.
-                    </div>
-                  </div>
-                </div>
+      <div className="min-h-screen bg-[#fafafa] font-['Poppins',sans-serif] text-[#474747]">
+      <header className="border-b border-[#e8e8e8] bg-white">
+        <div className="mx-auto flex h-[72px] w-full max-w-[1276px] items-center justify-between">
+          <img src={logoDark} alt="HRM8" className="h-[28px] w-auto" />
 
-                <aside className="border-t border-slate-200/80 bg-slate-50/80 p-5 lg:border-l lg:border-t-0">
-                  <p className="text-[10px] uppercase tracking-[0.2em] text-slate-500">Directory snapshot</p>
-                  <div className="mt-4 grid grid-cols-2 gap-3">
-                    <OverviewStat icon={Building2} tone="brand" label="Companies" value={formatCount(companies.length)} />
-                    <OverviewStat icon={Briefcase} tone="success" label="Live roles" value={formatCount(totalJobs)} />
-                    <OverviewStat icon={BadgeCheck} tone="warning" label="Verified" value={formatCount(verifiedCompanies)} />
-                    <OverviewStat icon={ImageIcon} tone="coral" label="Stories live" value={formatCount(companiesWithStory)} />
-                  </div>
-                  <p className="mt-4 text-sm leading-6 text-slate-600">
-                    Profiles surface live openings first, then layer in employer story, official links, and brand media where available.
-                  </p>
-                </aside>
+          <nav className="flex h-full items-center gap-12 text-[16px]">
+            <Link to="/jobs" className="inline-flex h-full items-center gap-2 px-4 text-[#656565]">
+              <Briefcase className="h-5 w-5" />
+              Find jobs
+            </Link>
+            <Link to="/careers" className="inline-flex h-full items-center gap-2 border-b border-[#5b67f3] px-4 text-[#5b67f3]">
+              <Building2 className="h-5 w-5" />
+              Companies
+            </Link>
+            <button className="inline-flex h-full items-center gap-2 px-4 text-[#656565]" type="button">
+              <ClipboardList className="h-5 w-5" />
+              Salaries
+            </button>
+          </nav>
+
+          <div className="flex items-center gap-6">
+            <div className="h-9 w-9 overflow-hidden rounded-full border border-black/10 bg-[#e0e0e0]">
+              <div className="flex h-full w-full items-center justify-center text-[12px] font-medium text-[#474747]">
+                {candidate?.firstName?.[0]?.toUpperCase() || 'U'}
               </div>
             </div>
+            <Bell className="h-6 w-6 text-[#191919]" />
           </div>
-        </section>
+        </div>
+      </header>
 
-        <section className="mx-auto max-w-7xl px-4 py-8">
-          <div className="grid gap-6 lg:grid-cols-[300px_minmax(0,1fr)] lg:items-start">
-            <aside className="space-y-4 lg:sticky lg:top-6">
-              <div className="rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_16px_45px_rgba(15,23,42,0.04)] md:p-5">
-                <div className="flex items-start gap-3">
-                  <SectionIconChip icon={Search} tone="brand" active />
-                  <div>
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Refine directory</p>
-                    <h2 className="mt-1 text-lg font-semibold tracking-tight text-slate-950">Browse the right employers faster</h2>
-                  </div>
-                </div>
+      <section className="border-b border-[#e8e8e8] bg-[#323986] px-4 py-[54px]">
+        <div className="mx-auto flex max-w-[685px] flex-col items-center gap-14">
+          <div className="text-center text-white">
+            <h1 className="text-[44px] font-semibold leading-[44px]">Explore Hiring Companies</h1>
+            <p className="mt-3 text-[16px] font-medium leading-[26px]">Discover verified employers actively hiring on HRM8</p>
+          </div>
 
-                <div className="mt-4 space-y-3">
-                  <div className="relative">
-                    <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-                    <Input
-                      placeholder="Search employer, industry, or location"
-                      value={searchQuery}
-                      onChange={(event) => setSearchQuery(event.target.value)}
-                      className="h-11 rounded-full border-slate-200 bg-white pl-10"
-                    />
-                  </div>
+          <div className="flex w-full items-center gap-5">
+            <div className="flex h-12 flex-1 items-center gap-3 rounded-[8px] border-[1.5px] border-[#e5e7ea] bg-[#f9fafb] px-3">
+              <Search className="h-5 w-5 text-[#b8b8b8]" />
+              <input
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') {
+                    setSearchQuery(searchInput.trim());
+                    setCurrentPage(1);
+                  }
+                }}
+                placeholder="Search by name or industry..."
+                className="h-full flex-1 bg-transparent text-[14px] leading-[24px] text-[#474747] outline-none placeholder:text-[#b8b8b8]"
+              />
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                setSearchQuery(searchInput.trim());
+                setCurrentPage(1);
+              }}
+              className="h-12 rounded-[12px] bg-[#4e61f6] px-8 text-[16px] font-medium leading-[26px] text-white"
+            >
+              Search
+            </button>
+          </div>
+        </div>
+      </section>
 
-                  <Select value={companyFilter} onValueChange={(value: CompanyFilter) => setCompanyFilter(value)}>
-                    <SelectTrigger className="h-11 rounded-full border-slate-200 bg-white">
-                      <SelectValue placeholder="Filter employers" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">All employers</SelectItem>
-                      <SelectItem value="hiring">Hiring now ({formatCount(hiringCompanies)})</SelectItem>
-                      <SelectItem value="verified">Verified employers ({formatCount(verifiedCompanies)})</SelectItem>
-                      <SelectItem value="story">With company story ({formatCount(companiesWithStory)})</SelectItem>
-                    </SelectContent>
-                  </Select>
+      <main className="mx-auto flex w-full max-w-[1276px] gap-[16px] px-4 py-5">
+        <aside className="w-[278px] shrink-0 rounded-[12px] border border-[#e8e8e8] bg-white p-4">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-[20px] font-medium leading-[30px] text-[#474747]">Filters</p>
+            <button type="button" onClick={clearAll} className="text-[14px] leading-[24px] text-[#4e61f6]">
+              Clear All
+            </button>
+          </div>
 
-                  <Select value={sortBy} onValueChange={(value: SortOption) => setSortBy(value)}>
-                    <SelectTrigger className="h-11 rounded-full border-slate-200 bg-white">
-                      <SelectValue placeholder="Sort employers" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="recommended">Recommended</SelectItem>
-                      <SelectItem value="mostJobs">Most live roles</SelectItem>
-                      <SelectItem value="aToZ">Name (A-Z)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                {popularSearches.length > 0 ? (
-                  <div className="mt-4">
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Popular searches</p>
-                    <div className="mt-3 flex flex-wrap gap-2">
-                      {popularSearches.map((item) => (
-                        <button
-                          key={item}
-                          type="button"
-                          onClick={() => setSearchQuery(item)}
-                          className="transition-transform hover:-translate-y-0.5"
-                        >
-                          <Badge variant="neutral" className="px-3 py-1.5 text-xs font-semibold">
-                            {item}
-                          </Badge>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                ) : null}
-
-                {hasActiveFilters ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="mt-4 h-9 rounded-full px-3 text-slate-600 hover:bg-slate-100"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setCompanyFilter('all');
-                      setSortBy('recommended');
-                    }}
-                  >
-                    Reset directory
-                  </Button>
-                ) : null}
+          <div className="space-y-6">
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-[16px] leading-[26px] text-[#474747]">Industry</p>
+                <ChevronDown className="h-4 w-4 text-[#656565]" />
               </div>
-
-              <div className="rounded-[28px] border border-slate-200/80 bg-slate-50/80 p-4 shadow-[0_16px_45px_rgba(15,23,42,0.03)] md:p-5">
-                <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">What you can compare</p>
-                <div className="mt-4 space-y-4">
-                  <div className="flex items-start gap-3">
-                    <SectionIconChip icon={Sparkles} tone="brand" compact />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-950">Employer story</p>
-                      <p className="mt-1 text-sm leading-6 text-slate-600">Read how the company describes its mission, environment, and public brand.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <SectionIconChip icon={Briefcase} tone="success" compact />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-950">Hiring footprint</p>
-                      <p className="mt-1 text-sm leading-6 text-slate-600">Compare role volume quickly before you commit time to a deeper read.</p>
-                    </div>
-                  </div>
-                  <div className="flex items-start gap-3">
-                    <SectionIconChip icon={Globe} tone="warning" compact />
-                    <div>
-                      <p className="text-sm font-semibold text-slate-950">Official channels</p>
-                      <p className="mt-1 text-sm leading-6 text-slate-600">Validate website and social presence without leaving the directory flow.</p>
-                    </div>
-                  </div>
-                </div>
-
-                <Button asChild variant="outline" className="mt-5 h-10 w-full rounded-full border-slate-200 bg-white">
-                  <Link to="/jobs">
-                    Browse all jobs
-                    <ArrowRight className="h-4 w-4" />
-                  </Link>
-                </Button>
-              </div>
-            </aside>
-
-            <div className="space-y-4">
-              <div className="rounded-[28px] border border-slate-200/80 bg-white p-4 shadow-[0_16px_45px_rgba(15,23,42,0.03)] md:p-5">
-                <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-[0.18em] text-slate-500">Employer directory</p>
-                    <h2 className="mt-1 text-lg font-bold tracking-tight text-slate-950">
-                      {formatCount(filteredCompanies.length)} company profile{filteredCompanies.length === 1 ? '' : 's'} in view
-                    </h2>
-                    <p className="mt-1 text-sm text-slate-600">
-                      Showing {formatCount(filteredCompanies.length)} of {formatCount(companies.length)} public employer profiles with live hiring context.
-                    </p>
-                  </div>
-
-                  <div className="flex flex-wrap gap-2">
-                    {searchQuery.trim() ? (
-                      <Badge variant="purple-soft" className="px-3 py-1.5 text-xs font-semibold">
-                        Search: {searchQuery.trim()}
-                      </Badge>
-                    ) : null}
-                    {companyFilter !== 'all' ? (
-                      <Badge variant="teal-soft" className="px-3 py-1.5 text-xs font-semibold">
-                        {getFilterLabel(companyFilter)}
-                      </Badge>
-                    ) : null}
-                    {sortBy !== 'recommended' ? (
-                      <Badge variant="orange-soft" className="px-3 py-1.5 text-xs font-semibold">
-                        {sortBy === 'mostJobs' ? 'Sorted by live roles' : 'Sorted alphabetically'}
-                      </Badge>
-                    ) : null}
-                  </div>
-                </div>
-              </div>
-
-              {loading ? (
-                <div className="space-y-4">
-                  {Array.from({ length: 5 }).map((_, index) => (
-                    <div
-                      key={index}
-                      className="overflow-hidden rounded-[30px] border border-slate-200/80 bg-white shadow-[0_18px_55px_rgba(15,23,42,0.04)]"
+              <div className="space-y-3">
+                {industryOptions.slice(0, 4).map(([industry, count]) => {
+                  const checked = selectedIndustries.includes(industry);
+                  return (
+                    <button
+                      key={industry}
+                      type="button"
+                      onClick={() => toggle(industry, setSelectedIndustries)}
+                      className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
                     >
-                      <div className="grid gap-0 xl:grid-cols-[248px_minmax(0,1fr)]">
-                        <Skeleton className="h-[220px] w-full xl:h-full" />
-                        <div className="grid gap-5 p-5 md:p-6 xl:grid-cols-[minmax(0,1fr)_220px]">
-                          <div className="space-y-4">
-                            <div className="flex gap-2">
-                              <Skeleton className="h-7 w-28 rounded-full" />
-                              <Skeleton className="h-7 w-24 rounded-full" />
-                            </div>
-                            <div className="space-y-3">
-                              <Skeleton className="h-8 w-2/3" />
-                              <Skeleton className="h-4 w-1/2" />
-                              <Skeleton className="h-4 w-full" />
-                              <Skeleton className="h-4 w-5/6" />
-                            </div>
-                            <div className="flex gap-2">
-                              <Skeleton className="h-7 w-24 rounded-full" />
-                              <Skeleton className="h-7 w-28 rounded-full" />
-                              <Skeleton className="h-7 w-20 rounded-full" />
-                            </div>
-                          </div>
-                          <Skeleton className="h-[208px] rounded-[24px]" />
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              ) : filteredCompanies.length === 0 ? (
-                <div className="rounded-[30px] border border-dashed border-slate-300 bg-white p-8 text-center shadow-[0_16px_45px_rgba(15,23,42,0.03)]">
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full border border-slate-200 bg-slate-50">
-                    <Users className="h-6 w-6 text-slate-400" />
-                  </div>
-                  <h3 className="mt-4 text-xl font-semibold tracking-tight text-slate-950">No employers match the current directory filters</h3>
-                  <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-slate-600">
-                    Try a broader keyword, switch back to all employers, or browse the full jobs directory instead.
-                  </p>
-                  <Button
-                    variant="outline"
-                    className="mt-5 rounded-full border-slate-200"
-                    onClick={() => {
-                      setSearchQuery('');
-                      setCompanyFilter('all');
-                      setSortBy('recommended');
-                    }}
+                      <span className={checked ? 'h-4 w-4 rounded-[6px] bg-[#4e61f6]' : 'h-4 w-4 rounded-[6px] border-[1.5px] border-[#4e61f6]'} />
+                      {industry} ({count})
+                    </button>
+                  );
+                })}
+              </div>
+              {industryOptions.length > 4 ? <button type="button" className="mt-3 text-[14px] leading-[24px] text-[#4e61f6]">Show more +</button> : null}
+            </section>
+
+            <div className="h-px w-full bg-[#e8e8e8]" />
+
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-[16px] leading-[26px] text-[#474747]">Company Size</p>
+                <ChevronDown className="h-4 w-4 text-[#656565]" />
+              </div>
+              <div className="space-y-3">
+                {companySizeOptions.map((option) => {
+                  const checked = selectedCompanySizes.includes(option);
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => toggle(option, setSelectedCompanySizes)}
+                    className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
                   >
-                    Clear filters
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredCompanies.map((company) => (
-                    <CompanyListItem key={company.id} company={company} />
-                  ))}
-                </div>
-              )}
+                      <span className={checked ? 'h-4 w-4 rounded-[6px] bg-[#4e61f6]' : 'h-4 w-4 rounded-[6px] border-[1.5px] border-[#4e61f6]'} />
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <div className="h-px w-full bg-[#e8e8e8]" />
+
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-[16px] leading-[26px] text-[#474747]">Location</p>
+                <ChevronDown className="h-4 w-4 text-[#656565]" />
+              </div>
+
+              <div className="mb-3 flex h-10 items-center gap-2 rounded-[8px] border border-[#e8e8e8] px-3">
+                <MapPin className="h-4 w-4 text-[#656565]" />
+                <input
+                  value={locationText}
+                  onChange={(event) => {
+                    setLocationText(event.target.value);
+                    setCurrentPage(1);
+                  }}
+                  placeholder="Type a city..."
+                  className="h-full flex-1 bg-transparent text-[14px] leading-[24px] text-[#474747] outline-none placeholder:text-[#b8b8b8]"
+                />
+              </div>
+
+              <div className="space-y-3">
+                {locationOptions.map((option) => {
+                  const checked = selectedLocations.includes(option);
+                  return (
+                    <button
+                      key={option}
+                      type="button"
+                      onClick={() => toggle(option, setSelectedLocations)}
+                      className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
+                    >
+                      <span className={checked ? 'h-4 w-4 rounded-[6px] bg-[#4e61f6]' : 'h-4 w-4 rounded-[6px] border-[1.5px] border-[#4e61f6]'} />
+                      {option}
+                    </button>
+                  );
+                })}
+              </div>
+            </section>
+
+            <div className="h-px w-full bg-[#e8e8e8]" />
+
+            <section>
+              <div className="mb-3 flex items-center justify-between">
+                <p className="text-[16px] leading-[26px] text-[#474747]">Hiring Stage</p>
+                <ChevronDown className="h-4 w-4 text-[#656565]" />
+              </div>
+
+              <div className="space-y-3">
+                <button
+                  type="button"
+                  onClick={() => toggle<CompanyStageValue>('actively_hiring', setSelectedCompanyStage)}
+                  className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
+                >
+                  <span className={selectedCompanyStage.includes('actively_hiring') ? 'h-4 w-4 rounded-[6px] bg-[#4e61f6]' : 'h-4 w-4 rounded-[6px] border-[1.5px] border-[#4e61f6]'} />
+                  Actively hiring
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => toggle<CompanyStageValue>('featured', setSelectedCompanyStage)}
+                  className="flex items-center gap-3 text-[14px] leading-[24px] text-[#656565]"
+                >
+                  <span className={selectedCompanyStage.includes('featured') ? 'h-4 w-4 rounded-[6px] bg-[#4e61f6]' : 'h-4 w-4 rounded-[6px] border-[1.5px] border-[#4e61f6]'} />
+                  Featured Companies
+                </button>
+              </div>
+            </section>
+          </div>
+        </aside>
+
+        <section className="min-w-0 flex-1">
+          <div className="mb-4 flex items-center justify-between">
+            <p className="text-[30px] font-medium leading-[40px] text-[#474747]">
+              Showing {filteredCompanies.length} jobs
+            </p>
+            <div className="flex items-center gap-3">
+              <span className="text-[16px] leading-[26px] text-[#656565]">Sort by:</span>
+              <div className="relative">
+                <select
+                  value={sortBy}
+                  onChange={(event) => {
+                    setSortBy(event.target.value as SortValue);
+                    setCurrentPage(1);
+                  }}
+                  className="h-10 appearance-none rounded-[8px] border border-[#e8e8e8] bg-white pl-3 pr-9 text-[14px] leading-[24px] text-[#474747]"
+                >
+                  <option value="relevance">Relevance</option>
+                  <option value="jobs">Most jobs</option>
+                  <option value="az">A-Z</option>
+                </select>
+                <ChevronDown className="pointer-events-none absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-[#656565]" />
+              </div>
             </div>
           </div>
+
+          {isLoading ? (
+            <div className="rounded-[12px] border border-[#e8e8e8] bg-white p-10 text-center text-[16px] leading-[26px] text-[#656565]">
+              Loading companies...
+            </div>
+          ) : pagedCompanies.length === 0 ? (
+            <div className="rounded-[12px] border border-[#e8e8e8] bg-white p-10 text-center text-[16px] leading-[26px] text-[#656565]">
+              No companies found for selected filters.
+            </div>
+          ) : (
+            <>
+              <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-3">
+                {pagedCompanies.map((company) => (
+                  <CompanyCard key={company.id} company={company} />
+                ))}
+              </div>
+
+              <div className="mt-4 flex items-center justify-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.max(1, prev - 1))}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-[6px] bg-[#5b67f3] text-white"
+                >
+                  <ChevronLeft className="h-5 w-5" />
+                </button>
+
+                {pageItems.map((item, index) => {
+                  if (item === 'ellipsis') {
+                    return (
+                      <span key={`ellipsis-${index}`} className="inline-flex h-9 w-9 items-center justify-center rounded-[46px] bg-white text-[14px] text-[#98a2b3]">
+                        ...
+                      </span>
+                    );
+                  }
+
+                  const active = item === currentPage;
+                  return (
+                    <button
+                      key={item}
+                      type="button"
+                      onClick={() => setCurrentPage(item)}
+                      className={active
+                        ? 'inline-flex h-9 w-9 items-center justify-center rounded-[6px] border border-[#5b67f3] bg-white text-[14px] text-black'
+                        : 'inline-flex h-9 w-9 items-center justify-center rounded-[6px] bg-white text-[14px] text-[#98a2b3]'}
+                    >
+                      {item}
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  onClick={() => setCurrentPage((prev) => Math.min(totalPages, prev + 1))}
+                  className="inline-flex h-9 w-9 items-center justify-center rounded-[6px] bg-[#5b67f3] text-white"
+                >
+                  <ChevronRight className="h-5 w-5" />
+                </button>
+              </div>
+            </>
+          )}
         </section>
-      </div>
-    </Layout>
+      </main>
+    </div>
   );
 }
