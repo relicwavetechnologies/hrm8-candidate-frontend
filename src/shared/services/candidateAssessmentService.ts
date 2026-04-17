@@ -12,6 +12,21 @@ export interface AssessmentSummary {
   status: 'PENDING' | 'INVITED' | 'IN_PROGRESS' | 'COMPLETED' | 'EXPIRED' | 'CANCELLED';
   jobTitle: string;
   roundName: string;
+  provider?: string;
+  deliveryMode?: 'NATIVE' | 'REDIRECT';
+  providerStatus?: string | null;
+  syncState?: 'SYNCED' | 'PENDING' | 'ERROR';
+  launchUrl?: string | null;
+  reportUrl?: string | null;
+  packageRef?: {
+    packageId?: string;
+    packageName?: string;
+    durationMinutes?: number | null;
+    cutoffScore?: number | null;
+    resultMode?: 'SCORE' | 'PASS_FAIL' | 'REPORT_ONLY' | null;
+  } | null;
+  packageName?: string | null;
+  launchable?: boolean;
   deadline?: string;
   expiryDate?: string;
   invitedAt: string;
@@ -32,6 +47,21 @@ export interface AssessmentDetails extends AssessmentSummary {
   config?: {
     timeLimitMinutes?: number;
     instructions?: string;
+  };
+  deliveryMode?: 'NATIVE' | 'REDIRECT';
+  providerSummary?: Record<string, any> | null;
+  providerStatus?: string | null;
+  packageRef?: AssessmentSummary['packageRef'];
+  reportUrl?: string | null;
+  managementUrl?: string | null;
+  syncState?: 'SYNCED' | 'PENDING' | 'ERROR';
+  launchUrl?: string | null;
+  integritySummary?: Record<string, any> | null;
+  instructions?: string | null;
+  launch?: {
+    ready: boolean;
+    mode: 'REDIRECT';
+    redirectUrl?: string | null;
   };
   results?: any;
 }
@@ -67,14 +97,14 @@ class CandidateAssessmentService {
    * Start assessment by token (authenticated candidate route)
    */
   async startAssessment(token: string) {
-    return apiClient.post<{ message: string; startedAt: string }>(`/api/candidate/assessments/${token}/start`);
+    return apiClient.post<{ message?: string; startedAt?: string; redirectUrl?: string }>(`/api/candidate/assessments/${token}/start`);
   }
 
   /**
    * Start assessment by token (public route — no auth required)
    */
   async startAssessmentPublic(token: string) {
-    return apiClient.post<{ message: string; startedAt: string }>(`/api/assessment/${token}/start`);
+    return apiClient.post<{ message?: string; startedAt?: string; redirectUrl?: string }>(`/api/assessment/${token}/start`);
   }
 
   /**

@@ -94,6 +94,7 @@ export default function AssessmentListPage() {
             {assessments.map((assessment) => {
               const canTake = ["INVITED", "PENDING", "IN_PROGRESS"].includes(assessment.status);
               const isInProgress = assessment.status === "IN_PROGRESS";
+              const isRedirect = assessment.deliveryMode === "REDIRECT";
 
               return (
                 <Card
@@ -114,6 +115,16 @@ export default function AssessmentListPage() {
                         <CardDescription className="text-xs truncate mt-0.5">
                           {assessment.roundName}
                         </CardDescription>
+                        <div className="mt-2 flex items-center gap-2">
+                          <Badge variant="secondary" className="text-[10px] capitalize">
+                            {assessment.provider || "native"}
+                          </Badge>
+                          {assessment.syncState && assessment.provider === "xobin" ? (
+                            <Badge variant="outline" className="text-[10px]">
+                              {assessment.syncState.toLowerCase()}
+                            </Badge>
+                          ) : null}
+                        </div>
                       </div>
                       {getStatusBadge(assessment.status)}
                     </div>
@@ -152,11 +163,11 @@ export default function AssessmentListPage() {
                       >
                         {isInProgress ? (
                           <>
-                            <Play className="mr-1.5 h-3 w-3" /> Resume Assessment
+                            <Play className="mr-1.5 h-3 w-3" /> {isRedirect ? "Continue on Xobin" : "Resume Assessment"}
                           </>
                         ) : (
                           <>
-                            <Play className="mr-1.5 h-3 w-3" /> Start Assessment
+                            <Play className="mr-1.5 h-3 w-3" /> {isRedirect ? "Start on Xobin" : "Start Assessment"}
                           </>
                         )}
                         <ArrowRight className="ml-auto h-3 w-3" />

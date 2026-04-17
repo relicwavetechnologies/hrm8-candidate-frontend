@@ -120,11 +120,14 @@ export default function AssessmentPage() {
         };
 
         setAssessment(data);
+        const isRedirectAssessment = data.deliveryMode === "REDIRECT";
 
         if (data.status === "COMPLETED") {
           setPhase("completed");
         } else if (data.status === "EXPIRED") {
           setPhase("expired");
+        } else if (isRedirectAssessment) {
+          setPhase("intro");
         } else if (data.status === "IN_PROGRESS") {
           setPhase("active");
           if (data.config?.timeLimitMinutes && raw.started_at) {
@@ -169,6 +172,11 @@ export default function AssessmentPage() {
         : await candidateAssessmentService.startAssessment(assessmentToken);
 
       if (response.success) {
+        const redirectUrl = response.data?.redirectUrl;
+        if (redirectUrl) {
+          window.location.href = redirectUrl;
+          return;
+        }
         setPhase("active");
         if (assessment.config?.timeLimitMinutes) {
           setTimeRemaining(assessment.config.timeLimitMinutes * 60);
@@ -283,6 +291,7 @@ export default function AssessmentPage() {
   };
 
   const questions = assessment?.questions || [];
+  const isRedirectAssessment = assessment?.deliveryMode === "REDIRECT";
   const currentQuestion = questions[currentQuestionIndex];
   const answeredCount = questions.filter((q) => answers[q.id] !== undefined && answers[q.id] !== "" && answers[q.id] !== null).length;
   const progress = questions.length > 0 ? (answeredCount / questions.length) * 100 : 0;
@@ -398,8 +407,8 @@ export default function AssessmentPage() {
     const jobTitle = assessment?.jobTitle || (assessment as any)?.job_title || "Assessment";
     const roundName = assessment?.roundName || (assessment as any)?.round_name || "";
     const questionCount = questions.length;
-    const timeLimit = assessment?.config?.timeLimitMinutes;
-    const instructions = assessment?.config?.instructions;
+    const timeLimit = assessment?.config?.timeLimitMinutes || assessment?.packageRef?.durationMinutes;
+    const instructions = assessment?.instructions || assessment?.config?.instructions;
 
     return (
       <div className="min-h-screen bg-gradient-to-b from-muted/40 to-background flex items-center justify-center p-4">
@@ -422,8 +431,12 @@ export default function AssessmentPage() {
                   <FileText className="h-5 w-5 text-blue-600 dark:text-blue-400" />
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{questionCount}</p>
-                  <p className="text-xs text-muted-foreground">Questions</p>
+                  <p className="text-2xl font-bold">
+                    {isRedirectAssessment ? assessment?.packageRef?.packageName || "Xobin" : questionCount}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {isRedirectAssessment ? "Provider package" : "Questions"}
+                  </p>
                 </div>
               </div>
               <div className="flex items-center gap-3 p-5">
@@ -454,8 +467,8 @@ export default function AssessmentPage() {
                   {[
                     { icon: Shield, text: "Ensure you have a stable internet connection" },
                     { icon: Clock, text: timeLimit ? `You will have ${timeLimit} minutes to complete the assessment` : "There is no time limit for this assessment" },
-                    { icon: AlertTriangle, text: "Do not refresh or close the browser window during the assessment" },
-                    { icon: CheckCircle2, text: "You can navigate between questions freely before submitting" },
+                    { icon: AlertTriangle, text: isRedirectAssessment ? "You will continue on Xobin after launch" : "Do not refresh or close the browser window during the assessment" },
+                    { icon: CheckCircle2, text: isRedirectAssessment ? "Results will sync back into HRM8 after completion" : "You can navigate between questions freely before submitting" },
                   ].map((item, i) => (
                     <li key={i} className="flex items-start gap-3 text-sm text-muted-foreground">
                       <item.icon className="mt-0.5 h-4 w-4 shrink-0 text-muted-foreground/70" />
@@ -469,7 +482,7 @@ export default function AssessmentPage() {
             {/* Action */}
             <div className="border-t bg-muted/30 p-5">
               <Button size="lg" className="w-full h-12 text-sm font-semibold" onClick={handleStart}>
-                Start Assessment
+                {assessment?.status === "IN_PROGRESS" ? (isRedirectAssessment ? "Continue on Xobin" : "Resume Assessment") : (isRedirectAssessment ? "Start on Xobin" : "Start Assessment")}
                 <ChevronRight className="ml-2 h-4 w-4" />
               </Button>
             </div>
